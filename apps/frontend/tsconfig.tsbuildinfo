@@ -1,1 +1,1 @@
-{"root":["./src/App.tsx","./src/main.tsx"],"version":"5.9.3"}
+{"root":["./src/App.tsx","./src/main.tsx","./src/types.ts","./src/routes/HostsRoute.tsx","./src/routes/LoginRoute.tsx","./src/routes/MyVmsRoute.tsx","./src/routes/OverviewRoute.tsx","./src/routes/SettingsRoute.tsx","./src/routes/UsersRoute.tsx","./src/routes/VmsRoute.tsx"],"version":"5.9.3"}

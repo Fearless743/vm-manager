@@ -146,7 +146,6 @@ export function App() {
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(defaultSiteConfig);
   const [siteTitleInput, setSiteTitleInput] = useState(defaultSiteConfig.siteTitle);
   const [loginSubtitleInput, setLoginSubtitleInput] = useState(defaultSiteConfig.loginSubtitle);
-  const [sidebarTitleInput, setSidebarTitleInput] = useState(defaultSiteConfig.sidebarTitle);
   const [error, setError] = useState("");
   const [modalKind, setModalKind] = useState<ModalKind>(null);
 
@@ -176,7 +175,6 @@ export function App() {
     setSiteConfig(config);
     setSiteTitleInput(config.siteTitle);
     setLoginSubtitleInput(config.loginSubtitle);
-    setSidebarTitleInput(config.sidebarTitle);
   };
 
   const refreshVms = async () => {
@@ -519,7 +517,7 @@ export function App() {
       body: JSON.stringify({
         siteTitle: siteTitleInput,
         loginSubtitle: loginSubtitleInput,
-        sidebarTitle: sidebarTitleInput
+        sidebarTitle: siteTitleInput
       })
     });
     if (!response.ok) {
@@ -531,7 +529,6 @@ export function App() {
     setSiteConfig(updated);
     setSiteTitleInput(updated.siteTitle);
     setLoginSubtitleInput(updated.loginSubtitle);
-    setSidebarTitleInput(updated.sidebarTitle);
   };
 
   const createUser = async () => {
@@ -699,10 +696,8 @@ export function App() {
         <SettingsRoute
           siteTitleInput={siteTitleInput}
           loginSubtitleInput={loginSubtitleInput}
-          sidebarTitleInput={sidebarTitleInput}
           onSiteTitleChange={setSiteTitleInput}
           onLoginSubtitleChange={setLoginSubtitleInput}
-          onSidebarTitleChange={setSidebarTitleInput}
           onSave={() => {
             void saveSiteConfig();
           }}
@@ -956,7 +951,7 @@ export function App() {
     <>
       <main className="layout">
         <aside className="sidebar card">
-        <h2 className="sidebar-brand">{siteConfig.sidebarTitle}</h2>
+        <h2 className="sidebar-brand">{siteConfig.siteTitle}</h2>
         <p className="sidebar-user">
           {session.user.username} ({session.user.role})
         </p>
