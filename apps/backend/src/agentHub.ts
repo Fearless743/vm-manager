@@ -13,7 +13,7 @@ import type {
   VmRecord
 } from "@vm-manager/shared";
 import { config } from "./config.js";
-import { updateVmRecord } from "./store.js";
+import { findVmById, updateVmRecord } from "./store.js";
 
 type PendingRequest = {
   vmId: string;
@@ -121,6 +121,76 @@ export class AgentHub {
     }
   }
 
+  private async reconcileOrphanResult(
+    vmId: string,
+    ok: boolean,
+    payload: Record<string, unknown>,
+    error?: string
+  ): Promise<void> {
+    const vm = await findVmById(vmId);
+    if (!vm) {
+      return;
+    }
+    if (!ok) {
+      await updateVmRecord(vmId, { status: "error", lastError: error ?? "unknown agent error" });
+      return;
+    }
+
+    const patch: Partial<VmRecord> = {};
+    let hasPatch = false;
+
+    if (typeof payload.containerId === "string") {
+      patch.containerId = payload.containerId;
+      hasPatch = true;
+    }
+    if (typeof payload.sshPassword === "string") {
+      patch.sshPassword = payload.sshPassword;
+      hasPatch = true;
+    }
+    if (typeof payload.sshPort === "number") {
+      patch.sshPort = payload.sshPort;
+      hasPatch = true;
+    }
+    if (typeof payload.diskSizeGb === "number") {
+      patch.diskSizeGb = payload.diskSizeGb;
+      hasPatch = true;
+    }
+    if (typeof payload.cpuCores === "number") {
+      patch.cpuCores = payload.cpuCores;
+      hasPatch = true;
+    }
+    if (typeof payload.memoryMb === "number") {
+      patch.memoryMb = payload.memoryMb;
+      hasPatch = true;
+    }
+    if (typeof payload.bandwidthMbps === "number") {
+      patch.bandwidthMbps = payload.bandwidthMbps;
+      hasPatch = true;
+    }
+    if (Array.isArray(payload.openPorts)) {
+      patch.openPorts = payload.openPorts.filter((item): item is number => typeof item === "number");
+      hasPatch = true;
+    }
+
+    const looksLikeCreateResult =
+      typeof payload.containerId === "string" ||
+      typeof payload.sshPort === "number" ||
+      typeof payload.sshPassword === "string" ||
+      Array.isArray(payload.openPorts);
+
+    if (vm.status === "creating" && looksLikeCreateResult) {
+      patch.status = "running";
+      hasPatch = true;
+    }
+
+    if (!hasPatch) {
+      return;
+    }
+
+    patch.lastError = undefined;
+    await updateVmRecord(vmId, patch);
+  }
+
   private onConnection(ws: WebSocket): void {
     let hostKey: string | null = null;
 
@@ -182,6 +252,8 @@ export class AgentHub {
         }
         const pending = this.pending.get(message.requestId);
         if (!pending) {
+          const payload = (message.payload ?? {}) as Record<string, unknown>;
+          await this.reconcileOrphanResult(message.vmId, message.ok, payload, message.error);
           return;
         }
         if (pending.ws !== ws) {
