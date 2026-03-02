@@ -13,7 +13,7 @@ type Session = {
 
 type VmAction = "start" | "stop" | "reboot" | "reinstall" | "resetPassword" | "delete";
 type PageKey = "overview" | "hosts" | "vms" | "users" | "my-vms";
-type ModalKind = "createHost" | "createVm" | "createUser" | "editUser" | null;
+type ModalKind = "createHost" | "createVm" | "createUser" | "editUser" | "showHostSecret" | null;
 
 type VmRow = {
   id: string;
@@ -162,6 +162,7 @@ export function App() {
   const [memoryMbInput, setMemoryMbInput] = useState("");
   const [bandwidthMbpsInput, setBandwidthMbpsInput] = useState("");
   const [activeUserId, setActiveUserId] = useState<string>("");
+  const [rotatedHostSecret, setRotatedHostSecret] = useState<string>("");
   const [error, setError] = useState("");
   const [page, setPage] = useState<PageKey>("overview");
   const [modalKind, setModalKind] = useState<ModalKind>(null);
@@ -453,6 +454,26 @@ export function App() {
     await refreshHosts();
   };
 
+  const resetHostSecret = async (hostKey: string) => {
+    if (!authHeaders) {
+      return;
+    }
+    setError("");
+    const response = await fetch(`${resolveHttpBase()}/api/hosts/${hostKey}/reset-secret`, {
+      method: "POST",
+      headers: authHeaders
+    });
+    if (!response.ok) {
+      const body = (await response.json()) as { error?: string };
+      setError(body.error ?? "重置节点密钥失败");
+      return;
+    }
+    const host = (await response.json()) as HostRow;
+    setRotatedHostSecret(host.hostKey);
+    await refreshHosts();
+    setModalKind("showHostSecret");
+  };
+
   const createUser = async () => {
     if (!authHeaders) {
       return;
@@ -631,7 +652,7 @@ export function App() {
                   <h3>{host.name}</h3>
                   <span className={`status ${host.online ? "status-running" : "status-stopped"}`}>{host.online ? "在线" : "离线"}</span>
                 </div>
-                <p>宿主机 Key: {host.hostKey}</p>
+                <p>节点密钥: {host.hostKey}</p>
                 <p>启用状态: {host.enabled ? "启用" : "停用"}</p>
                 <p>Agent: {host.agentName ?? "-"}</p>
                 <p>CPU: {host.stats ? `${host.stats.cpuUsagePercent.toFixed(1)}% / ${host.stats.cpuCores}核` : "-"}</p>
@@ -640,6 +661,7 @@ export function App() {
                 <p>网络: {host.stats ? `↓${host.stats.networkRxMbps.toFixed(2)} ↑${host.stats.networkTxMbps.toFixed(2)} Mbps` : "-"}</p>
                 <div className="actions">
                   <button className="btn btn-muted" onClick={() => toggleHost(host.hostKey, !host.enabled)}>{host.enabled ? "停用" : "启用"}</button>
+                  <button className="btn btn-warning" onClick={() => resetHostSecret(host.hostKey)}>重置节点密钥</button>
                 </div>
               </article>
             ))}
@@ -729,7 +751,7 @@ export function App() {
             <input value={newHostName} onChange={(event) => setNewHostName(event.target.value)} />
           </label>
           <label>
-            宿主机 Key
+            节点密钥
             <input value="系统自动随机生成" disabled />
           </label>
         </div>
@@ -851,6 +873,23 @@ export function App() {
           <div className="actions">
             <button className="btn btn-danger" onClick={() => void deleteUser(user.id)}>删除用户</button>
           </div>
+        </div>
+      );
+    }
+
+    if (modalKind === "showHostSecret") {
+      title = "节点密钥已重置";
+      confirmText = "我已保存";
+      onConfirm = async () => {
+        setModalKind(null);
+      };
+      content = (
+        <div className="modal-form">
+          <p>请立即保存新的节点密钥，并更新宿主机 Agent 的 `AGENT_SHARED_SECRET` 后重启 Agent。</p>
+          <label>
+            新节点密钥
+            <input value={rotatedHostSecret} readOnly />
+          </label>
         </div>
       );
     }

@@ -298,3 +298,25 @@ export const updateHostNode = async (
   await persistStore(store);
   return host;
 };
+
+export const rotateHostNodeSecret = async (hostKey: string): Promise<HostNodeRecord | null> => {
+  const store = await getStore();
+  const host = store.hosts.find((item) => item.hostKey === hostKey);
+  if (!host) {
+    return null;
+  }
+  let next = makeHostKey();
+  while (store.hosts.some((item) => item.hostKey === next)) {
+    next = makeHostKey();
+  }
+  host.hostKey = next;
+  host.updatedAt = now();
+  store.vms.forEach((vm) => {
+    if (vm.hostKey === hostKey) {
+      vm.hostKey = next;
+      vm.updatedAt = now();
+    }
+  });
+  await persistStore(store);
+  return host;
+};

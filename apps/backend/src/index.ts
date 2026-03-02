@@ -18,6 +18,7 @@ import {
   listHostNodes,
   listUsers,
   purgeUncreatedVms,
+  rotateHostNodeSecret,
   updateUserRecord,
   updateHostNode,
   updateVmRecord
@@ -54,9 +55,12 @@ app.use(cors({ origin: config.corsOrigins }));
 app.use(express.json());
 
 const server = createServer(app);
-const hub = new AgentHub(server, async (hostKey) => {
-  const host = await findHostNodeByKey(hostKey);
-  return Boolean(host?.enabled);
+const hub = new AgentHub(server, async (secret) => {
+  const host = await findHostNodeByKey(secret);
+  if (!host?.enabled) {
+    return null;
+  }
+  return host.hostKey;
 });
 
 void purgeUncreatedVms();
@@ -238,6 +242,17 @@ app.patch("/api/hosts/:hostKey", authenticate, requireRole(["admin"]), async (re
   const { hostKey } = req.params;
   const { name, enabled } = req.body as { name?: string; enabled?: boolean };
   const host = await updateHostNode(hostKey, { name, enabled });
+  if (!host) {
+    res.status(404).json({ error: "Host not found" });
+    return;
+  }
+  res.json(hostView(host));
+});
+
+app.post("/api/hosts/:hostKey/reset-secret", authenticate, requireRole(["admin"]), async (req, res) => {
+  const { hostKey } = req.params;
+  hub.disconnectHost(hostKey);
+  const host = await rotateHostNodeSecret(hostKey);
   if (!host) {
     res.status(404).json({ error: "Host not found" });
     return;

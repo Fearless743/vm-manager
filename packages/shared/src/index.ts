@@ -53,14 +53,12 @@ export interface DataStore {
 
 export interface AgentRegisterMessage {
   type: "agent.register";
-  hostKey: string;
   agentName: string;
   secret: string;
 }
 
 export interface AgentHeartbeatMessage {
   type: "agent.heartbeat";
-  hostKey: string;
   at: string;
 }
 
@@ -77,7 +75,6 @@ export interface HostRuntimeStats {
 
 export interface AgentStatusMessage {
   type: "agent.status";
-  hostKey: string;
   agentName: string;
   at: string;
   stats: HostRuntimeStats;

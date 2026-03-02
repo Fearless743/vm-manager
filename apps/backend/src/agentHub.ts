@@ -29,7 +29,7 @@ export class AgentHub {
   private readonly uiWss: WebSocketServer;
   private readonly socketsByHost = new Map<string, WebSocket>();
   private readonly pending = new Map<string, PendingRequest>();
-  private readonly isHostAllowed: (hostKey: string) => Promise<boolean>;
+  private readonly resolveHostBySecret: (secret: string) => Promise<string | null>;
   private readonly hostRuntimeByKey = new Map<
     string,
     {
@@ -40,10 +40,10 @@ export class AgentHub {
     }
   >();
 
-  constructor(server: Server, isHostAllowed: (hostKey: string) => Promise<boolean>) {
+  constructor(server: Server, resolveHostBySecret: (secret: string) => Promise<string | null>) {
     this.wss = new WebSocketServer({ noServer: true });
     this.uiWss = new WebSocketServer({ noServer: true });
-    this.isHostAllowed = isHostAllowed;
+    this.resolveHostBySecret = resolveHostBySecret;
     this.wss.on("connection", (ws) => this.onConnection(ws));
     this.uiWss.on("connection", (ws, req) => this.onUiConnection(ws, req));
 
@@ -131,46 +131,48 @@ export class AgentHub {
       }
       if (message.type === "agent.register") {
           const register = message as AgentRegisterMessage;
-          if (register.secret !== config.agentSharedSecret) {
-            ws.close(4001, "invalid secret");
-            return;
-          }
-          const allowed = await this.isHostAllowed(register.hostKey);
-          if (!allowed) {
+          const resolvedHostKey = await this.resolveHostBySecret(register.secret);
+          if (!resolvedHostKey) {
             ws.close(4002, "hostKey not allowed");
             return;
           }
-          hostKey = register.hostKey;
-          this.socketsByHost.set(register.hostKey, ws);
-          this.hostRuntimeByKey.set(register.hostKey, {
-            ...(this.hostRuntimeByKey.get(register.hostKey) ?? {}),
+          hostKey = resolvedHostKey;
+          this.socketsByHost.set(resolvedHostKey, ws);
+          this.hostRuntimeByKey.set(resolvedHostKey, {
+            ...(this.hostRuntimeByKey.get(resolvedHostKey) ?? {}),
             agentName: register.agentName,
             lastHeartbeatAt: new Date().toISOString()
           });
-          this.broadcastUiHost(register.hostKey);
+          this.broadcastUiHost(resolvedHostKey);
           return;
       }
 
       if (message.type === "agent.heartbeat") {
-        const runtime = this.hostRuntimeByKey.get(message.hostKey) ?? { agentName: "unknown" };
-        this.hostRuntimeByKey.set(message.hostKey, {
+        if (!hostKey) {
+          return;
+        }
+        const runtime = this.hostRuntimeByKey.get(hostKey) ?? { agentName: "unknown" };
+        this.hostRuntimeByKey.set(hostKey, {
           ...runtime,
           lastHeartbeatAt: message.at
         });
-        this.broadcastUiHost(message.hostKey);
+        this.broadcastUiHost(hostKey);
         return;
       }
 
       if (message.type === "agent.status") {
+        if (!hostKey) {
+          return;
+        }
         const status = message as AgentStatusMessage;
-        const runtime = this.hostRuntimeByKey.get(status.hostKey) ?? { agentName: status.agentName };
-        this.hostRuntimeByKey.set(status.hostKey, {
+        const runtime = this.hostRuntimeByKey.get(hostKey) ?? { agentName: status.agentName };
+        this.hostRuntimeByKey.set(hostKey, {
           ...runtime,
           agentName: status.agentName,
           lastStatusAt: status.at,
           stats: status.stats
         });
-        this.broadcastUiHost(status.hostKey);
+        this.broadcastUiHost(hostKey);
         return;
       }
 
@@ -260,6 +262,16 @@ export class AgentHub {
     stats?: HostRuntimeStats;
   } | null {
     return this.hostRuntimeByKey.get(hostKey) ?? null;
+  }
+
+  public disconnectHost(hostKey: string): void {
+    const ws = this.socketsByHost.get(hostKey);
+    if (ws && ws.readyState === ws.OPEN) {
+      ws.close(4004, "node secret rotated");
+    }
+    this.socketsByHost.delete(hostKey);
+    this.hostRuntimeByKey.delete(hostKey);
+    this.broadcastUiHost(hostKey);
   }
 
   public async sendCommand(input: {

@@ -32,7 +32,6 @@ import (
 
 type Config struct {
 	BackendWSURL       string
-	HostKey            string
 	AgentName          string
 	Secret             string
 	SSHContainerPort   int
@@ -52,15 +51,13 @@ type BackendCommand struct {
 
 type AgentRegister struct {
 	Type      string `json:"type"`
-	HostKey   string `json:"hostKey"`
 	AgentName string `json:"agentName"`
 	Secret    string `json:"secret"`
 }
 
 type AgentHeartbeat struct {
-	Type    string `json:"type"`
-	HostKey string `json:"hostKey"`
-	At      string `json:"at"`
+	Type string `json:"type"`
+	At   string `json:"at"`
 }
 
 type AgentResult struct {
@@ -85,7 +82,6 @@ type HostStats struct {
 
 type AgentStatus struct {
 	Type      string    `json:"type"`
-	HostKey   string    `json:"hostKey"`
 	AgentName string    `json:"agentName"`
 	At        string    `json:"at"`
 	Stats     HostStats `json:"stats"`
@@ -136,7 +132,6 @@ func getEnvInt(name string, fallback int) int {
 func loadConfig() Config {
 	conf := Config{
 		BackendWSURL:       getEnv("BACKEND_WS_URL", "ws://localhost:4000/agent-ws"),
-		HostKey:            getEnv("HOST_KEY", "host-dev-001"),
 		AgentName:          getEnv("AGENT_NAME", "agent-go-local"),
 		Secret:             getEnv("AGENT_SHARED_SECRET", "dev-agent-secret-change-me"),
 		SSHContainerPort:   getEnvInt("SSH_CONTAINER_PORT", 2222),
@@ -784,7 +779,6 @@ func (a *Agent) connectAndServe() {
 
 		register := AgentRegister{
 			Type:      "agent.register",
-			HostKey:   a.conf.HostKey,
 			AgentName: a.conf.AgentName,
 			Secret:    a.conf.Secret,
 		}
@@ -807,11 +801,11 @@ func (a *Agent) connectAndServe() {
 					heartbeatCounter++
 					now := time.Now().UTC().Format(time.RFC3339)
 					if heartbeatCounter%3 == 0 {
-						_ = a.sendJSON(AgentHeartbeat{Type: "agent.heartbeat", HostKey: a.conf.HostKey, At: now})
+						_ = a.sendJSON(AgentHeartbeat{Type: "agent.heartbeat", At: now})
 					}
 					stats, statsErr := a.collectHostStats()
 					if statsErr == nil {
-						_ = a.sendJSON(AgentStatus{Type: "agent.status", HostKey: a.conf.HostKey, AgentName: a.conf.AgentName, At: now, Stats: stats})
+						_ = a.sendJSON(AgentStatus{Type: "agent.status", AgentName: a.conf.AgentName, At: now, Stats: stats})
 					}
 				}
 			}
@@ -854,6 +848,6 @@ func main() {
 		log.Fatalf("docker client init failed: %v", err)
 	}
 	agent := &Agent{conf: conf, docker: dockerClient}
-	log.Printf("agent(go) started, hostKey=%s, backend=%s", conf.HostKey, conf.BackendWSURL)
+	log.Printf("agent(go) started, backend=%s", conf.BackendWSURL)
 	agent.connectAndServe()
 }

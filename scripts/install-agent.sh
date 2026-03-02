@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO=""
+REPO="Fearless743/vm-manager"
 VERSION="latest"
 INSTALL_DIR="/usr/local/bin"
 INSTALL_SERVICE="true"
-HOST_KEY=""
 BACKEND_WS_URL=""
 AGENT_SHARED_SECRET=""
 AGENT_NAME=""
@@ -18,10 +17,7 @@ SSH_USERNAME="vmuser"
 usage() {
   cat <<'EOF'
 Usage:
-  install-agent.sh --repo <owner/repo> [options]
-
-Required:
-  --repo <owner/repo>               GitHub repository for release assets
+  install-agent.sh [options]
 
 Options:
   --version <tag|latest>            Release tag, default: latest
@@ -29,7 +25,6 @@ Options:
   --no-service                      Install binary only (skip systemd)
 
 Service env options (required unless --no-service):
-  --host-key <host-key>
   --backend-ws-url <ws-url>
   --agent-shared-secret <secret>
 
@@ -43,9 +38,7 @@ Optional service env:
 
 Example:
   sudo bash install-agent.sh \
-    --repo fearless/lxc-manager \
     --version latest \
-    --host-key host-xxxx \
     --backend-ws-url wss://example.com/agent-ws \
     --agent-shared-secret 'replace-me'
 EOF
@@ -60,10 +53,6 @@ require_cmd() {
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --repo)
-      REPO="$2"
-      shift 2
-      ;;
     --version)
       VERSION="$2"
       shift 2
@@ -75,10 +64,6 @@ while [ "$#" -gt 0 ]; do
     --no-service)
       INSTALL_SERVICE="false"
       shift
-      ;;
-    --host-key)
-      HOST_KEY="$2"
-      shift 2
       ;;
     --backend-ws-url)
       BACKEND_WS_URL="$2"
@@ -123,12 +108,6 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
-
-if [ -z "$REPO" ]; then
-  echo "--repo is required" >&2
-  usage
-  exit 1
-fi
 
 require_cmd curl
 require_cmd tar
@@ -222,8 +201,8 @@ if [ "$INSTALL_SERVICE" != "true" ]; then
   exit 0
 fi
 
-if [ -z "$HOST_KEY" ] || [ -z "$BACKEND_WS_URL" ] || [ -z "$AGENT_SHARED_SECRET" ]; then
-  echo "--host-key, --backend-ws-url and --agent-shared-secret are required for service install" >&2
+if [ -z "$BACKEND_WS_URL" ] || [ -z "$AGENT_SHARED_SECRET" ]; then
+  echo "--backend-ws-url and --agent-shared-secret are required for service install" >&2
   exit 1
 fi
 
@@ -241,7 +220,6 @@ SERVICE_FILE="/etc/systemd/system/lxc-manager-agent.service"
 
 cat > "$ENV_FILE" <<EOF
 BACKEND_WS_URL=${BACKEND_WS_URL}
-HOST_KEY=${HOST_KEY}
 AGENT_NAME=${AGENT_NAME}
 AGENT_SHARED_SECRET=${AGENT_SHARED_SECRET}
 SSH_CONTAINER_PORT=${SSH_CONTAINER_PORT}
