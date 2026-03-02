@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { Role } from "@vm-manager/shared";
 
 type Session = {
@@ -134,6 +135,24 @@ const adminMenu: MenuItem[] = [
 
 const userMenu: MenuItem[] = [{ key: "my-vms", label: "我的虚拟机" }];
 
+const pageToPath: Record<PageKey, string> = {
+  overview: "/overview",
+  hosts: "/hosts",
+  vms: "/vms",
+  users: "/users",
+  settings: "/settings",
+  "my-vms": "/my-vms"
+};
+
+const pathToPage: Record<string, PageKey> = {
+  "/overview": "overview",
+  "/hosts": "hosts",
+  "/vms": "vms",
+  "/users": "users",
+  "/settings": "settings",
+  "/my-vms": "my-vms"
+};
+
 const defaultSiteConfig: SiteConfig = {
   siteTitle: "LXC 管理平台",
   loginSubtitle: "请使用管理员或普通用户登录。",
@@ -166,6 +185,8 @@ const actionButtonClass = (action: VmAction): string => {
 };
 
 export function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(() => loadSession());
   const [vms, setVms] = useState<VmRow[]>([]);
   const [hosts, setHosts] = useState<HostRow[]>([]);
@@ -194,7 +215,6 @@ export function App() {
   const [loginSubtitleInput, setLoginSubtitleInput] = useState(defaultSiteConfig.loginSubtitle);
   const [sidebarTitleInput, setSidebarTitleInput] = useState(defaultSiteConfig.sidebarTitle);
   const [error, setError] = useState("");
-  const [page, setPage] = useState<PageKey>("overview");
   const [modalKind, setModalKind] = useState<ModalKind>(null);
 
   const authHeaders = useMemo(
@@ -209,6 +229,10 @@ export function App() {
   );
 
   const menu = session?.user.role === "admin" ? adminMenu : userMenu;
+  const normalizedPath = location.pathname.replace(/\/+$/, "") || "/";
+  const routePage = pathToPage[normalizedPath];
+  const fallbackPage: PageKey = session?.user.role === "admin" ? "overview" : "my-vms";
+  const page = routePage ?? fallbackPage;
 
   const refreshSiteConfig = async () => {
     const response = await fetch(`${resolveHttpBase()}/api/site-config`);
@@ -355,10 +379,24 @@ export function App() {
 
   useEffect(() => {
     if (!session) {
+      if (normalizedPath !== "/login") {
+        navigate("/login", { replace: true });
+      }
       return;
     }
-    setPage(session.user.role === "admin" ? "overview" : "my-vms");
-  }, [session]);
+
+    const allowedPages = new Set((session.user.role === "admin" ? adminMenu : userMenu).map((item) => item.key));
+    const defaultPath = pageToPath[session.user.role === "admin" ? "overview" : "my-vms"];
+
+    if (normalizedPath === "/login") {
+      navigate(defaultPath, { replace: true });
+      return;
+    }
+
+    if (!routePage || !allowedPages.has(routePage)) {
+      navigate(defaultPath, { replace: true });
+    }
+  }, [navigate, normalizedPath, routePage, session]);
 
   const login = async () => {
     setError("");
@@ -376,6 +414,7 @@ export function App() {
     const data = (await response.json()) as Session;
     setSession(data);
     saveSession(data);
+    navigate(data.user.role === "admin" ? pageToPath.overview : pageToPath["my-vms"], { replace: true });
   };
 
   const logout = () => {
@@ -384,6 +423,7 @@ export function App() {
     setVms([]);
     setHosts([]);
     setSystems([]);
+    navigate("/login", { replace: true });
   };
 
   const createVm = async () => {
@@ -418,7 +458,7 @@ export function App() {
       return;
     }
     await refreshVms();
-    setPage("vms");
+    navigate(pageToPath.vms);
     setModalKind(null);
   };
 
@@ -1067,7 +1107,7 @@ export function App() {
         </p>
         <div className="menu">
           {menu.map((item) => (
-            <button key={item.key} className={page === item.key ? "menu-btn menu-btn-active" : "menu-btn"} onClick={() => setPage(item.key)}>
+            <button key={item.key} className={page === item.key ? "menu-btn menu-btn-active" : "menu-btn"} onClick={() => navigate(pageToPath[item.key])}>
               {item.label}
             </button>
           ))}
