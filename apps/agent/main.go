@@ -13,7 +13,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -37,8 +36,9 @@ type Config struct {
 	MinHostPort        int
 	MaxHostPort        int
 	ExtraOpenPortCount int
-	SSHUsername        string
 }
+
+const sshLoginUsername = "root"
 
 type BackendCommand struct {
 	Type      string                 `json:"type"`
@@ -137,11 +137,6 @@ func loadConfig() Config {
 		MinHostPort:        getEnvInt("MIN_HOST_PORT", 20000),
 		MaxHostPort:        getEnvInt("MAX_HOST_PORT", 60000),
 		ExtraOpenPortCount: getEnvInt("EXTRA_OPEN_PORT_COUNT", 100),
-		SSHUsername:        getEnv("SSH_USERNAME", "vmuser"),
-	}
-	validUser := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
-	if !validUser.MatchString(conf.SSHUsername) {
-		conf.SSHUsername = "vmuser"
 	}
 	return conf
 }
@@ -431,6 +426,32 @@ func (a *Agent) sendJSON(v interface{}) error {
 	return a.conn.WriteJSON(v)
 }
 
+func (a *Agent) runExec(ctx context.Context, containerID string, cmdText string) error {
+	execResp, err := a.docker.ContainerExecCreate(ctx, containerID, container.ExecOptions{
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          []string{"sh", "-lc", cmdText},
+		User:         "root",
+	})
+	if err != nil {
+		return err
+	}
+	attach, err := a.docker.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{})
+	if err != nil {
+		return err
+	}
+	defer attach.Close()
+	_, _ = io.Copy(io.Discard, attach.Reader)
+	execInspect, err := a.docker.ContainerExecInspect(ctx, execResp.ID)
+	if err != nil {
+		return err
+	}
+	if execInspect.ExitCode != 0 {
+		return fmt.Errorf("exec command failed with code %d", execInspect.ExitCode)
+	}
+	return nil
+}
+
 func (a *Agent) ensureImage(ctx context.Context, imageName string) error {
 	_, _, err := a.docker.ImageInspectWithRaw(ctx, imageName)
 	if err == nil {
@@ -518,8 +539,8 @@ func (a *Agent) createVM(ctx context.Context, vmID string, imageName string, req
 		Image: imageName,
 		Env: []string{
 			"PASSWORD_ACCESS=true",
-			"SUDO_ACCESS=false",
-			fmt.Sprintf("USER_NAME=%s", a.conf.SSHUsername),
+			"SUDO_ACCESS=true",
+			"USER_NAME=root",
 			fmt.Sprintf("USER_PASSWORD=%s", password),
 		},
 		ExposedPorts: portSet,
@@ -552,13 +573,19 @@ func (a *Agent) createVM(ctx context.Context, vmID string, imageName string, req
 	if err := a.docker.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return nil, err
 	}
+	if err := a.runExec(ctx, resp.ID, fmt.Sprintf("echo '%s:%s' | chpasswd", sshLoginUsername, password)); err != nil {
+		return nil, err
+	}
+	if err := a.runExec(ctx, resp.ID, "if [ -f /etc/ssh/sshd_config ]; then sed -i -E 's/^#?PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config; grep -q '^PermitRootLogin yes' /etc/ssh/sshd_config || printf '\nPermitRootLogin yes\n' >> /etc/ssh/sshd_config; pkill -HUP sshd || true; fi"); err != nil {
+		return nil, err
+	}
 
 	return map[string]interface{}{
 		"containerId":   resp.ID,
 		"sshPassword":   password,
 		"sshPort":       sshPort,
 		"openPorts":     openPorts,
-		"sshUsername":   a.conf.SSHUsername,
+		"sshUsername":   sshLoginUsername,
 		"diskSizeGb":    resources.DiskSizeGb,
 		"cpuCores":      resources.CPUCores,
 		"memoryMb":      resources.MemoryMb,
@@ -696,30 +723,8 @@ func (a *Agent) handleCommand(cmd BackendCommand) AgentResult {
 			out.Error = err.Error()
 			return out
 		}
-		cmdText := fmt.Sprintf("echo '%s:%s' | chpasswd", a.conf.SSHUsername, newPassword)
-		execResp, err := a.docker.ContainerExecCreate(ctx, id, container.ExecOptions{
-			AttachStdout: true,
-			AttachStderr: true,
-			Cmd:          []string{"sh", "-lc", cmdText},
-			User:         "root",
-		})
-		if err != nil {
-			out.Error = err.Error()
-			return out
-		}
-		attach, err := a.docker.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{})
-		if err != nil {
-			out.Error = err.Error()
-			return out
-		}
-		_, _ = io.Copy(io.Discard, attach.Reader)
-		attach.Close()
-		execInspect, err := a.docker.ContainerExecInspect(ctx, execResp.ID)
-		if err != nil {
-			out.Error = err.Error()
-			return out
-		}
-		if execInspect.ExitCode != 0 {
+		cmdText := fmt.Sprintf("echo '%s:%s' | chpasswd", sshLoginUsername, newPassword)
+		if err := a.runExec(ctx, id, cmdText); err != nil {
 			out.Error = "failed to reset ssh password"
 			return out
 		}

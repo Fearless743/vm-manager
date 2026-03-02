@@ -43,7 +43,6 @@ services:
       MIN_HOST_PORT: "20000"
       MAX_HOST_PORT: "60000"
       EXTRA_OPEN_PORT_COUNT: "100"
-      SSH_USERNAME: "vmuser"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped

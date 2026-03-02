@@ -13,7 +13,6 @@ SSH_CONTAINER_PORT="2222"
 MIN_HOST_PORT="20000"
 MAX_HOST_PORT="60000"
 EXTRA_OPEN_PORT_COUNT="100"
-SSH_USERNAME="vmuser"
 
 usage() {
   cat <<'EOF'
@@ -36,7 +35,6 @@ Optional service env:
   --min-host-port <port>
   --max-host-port <port>
   --extra-open-port-count <count>
-  --ssh-username <username>
 
 Example:
   sudo bash install-agent.sh \
@@ -147,10 +145,6 @@ while [ "$#" -gt 0 ]; do
       ;;
     --extra-open-port-count)
       EXTRA_OPEN_PORT_COUNT="$2"
-      shift 2
-      ;;
-    --ssh-username)
-      SSH_USERNAME="$2"
       shift 2
       ;;
     -h|--help)
@@ -284,7 +278,6 @@ SSH_CONTAINER_PORT=${SSH_CONTAINER_PORT}
 MIN_HOST_PORT=${MIN_HOST_PORT}
 MAX_HOST_PORT=${MAX_HOST_PORT}
 EXTRA_OPEN_PORT_COUNT=${EXTRA_OPEN_PORT_COUNT}
-SSH_USERNAME=${SSH_USERNAME}
 EOF
 
 cat > "$SERVICE_FILE" <<EOF
