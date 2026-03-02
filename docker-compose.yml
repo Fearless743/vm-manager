@@ -1,0 +1,54 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    container_name: lxc-manager-backend
+    environment:
+      BACKEND_PORT: "4000"
+      JWT_SECRET: "dev-jwt-secret-change-me"
+      AGENT_SHARED_SECRET: "dev-agent-secret-change-me"
+      ALLOWED_HOST_KEYS: "host-dev-001"
+      CORS_ORIGINS: "http://localhost:8080"
+      DATA_FILE: "data/store.json"
+      ADMIN_USERNAME: "admin"
+      ADMIN_PASSWORD: "admin123"
+      DEFAULT_USERNAME: "user1"
+      DEFAULT_USER_PASSWORD: "user123"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    container_name: lxc-manager-frontend
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  agent:
+    build:
+      context: .
+      dockerfile: docker/agent.Dockerfile
+    container_name: lxc-manager-agent
+    network_mode: host
+    environment:
+      BACKEND_WS_URL: "ws://127.0.0.1:8080/agent-ws"
+      HOST_KEY: "host-dev-001"
+      AGENT_NAME: "agent-go-local"
+      AGENT_SHARED_SECRET: "dev-agent-secret-change-me"
+      SSH_CONTAINER_PORT: "2222"
+      MIN_HOST_PORT: "20000"
+      MAX_HOST_PORT: "60000"
+      EXTRA_OPEN_PORT_COUNT: "100"
+      SSH_USERNAME: "vmuser"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
