@@ -52,16 +52,6 @@ jobs:
             type=ref,event=tag
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Docker metadata (agent)
-        id: meta_agent
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{ github.repository }}/agent
-          tags: |
-            type=sha
-            type=ref,event=tag
-            type=raw,value=latest,enable={{is_default_branch}}
-
       - name: Build and push backend image
         uses: docker/build-push-action@v6
         with:
@@ -81,16 +71,6 @@ jobs:
           push: true
           tags: ${{ steps.meta_frontend.outputs.tags }}
           labels: ${{ steps.meta_frontend.outputs.labels }}
-
-      - name: Build and push agent image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: docker/agent.Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta_agent.outputs.tags }}
-          labels: ${{ steps.meta_agent.outputs.labels }}
 
   agent-binaries:
     runs-on: ubuntu-latest
