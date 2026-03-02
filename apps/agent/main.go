@@ -427,6 +427,7 @@ func (a *Agent) sendJSON(v interface{}) error {
 	if a.conn == nil {
 		return errors.New("websocket is not connected")
 	}
+	_ = a.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	return a.conn.WriteJSON(v)
 }
 
@@ -759,6 +760,11 @@ func (a *Agent) connectAndServe() {
 			continue
 		}
 
+		_ = conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		conn.SetPongHandler(func(string) error {
+			return conn.SetReadDeadline(time.Now().Add(30 * time.Second))
+		})
+
 		a.mu.Lock()
 		a.conn = conn
 		a.mu.Unlock()
@@ -775,23 +781,44 @@ func (a *Agent) connectAndServe() {
 		}
 
 		done := make(chan struct{})
+		var doneOnce sync.Once
+		disconnect := func() {
+			doneOnce.Do(func() {
+				close(done)
+				_ = conn.Close()
+			})
+		}
+
 		go func() {
 			ticker := time.NewTicker(5 * time.Second)
+			pingTicker := time.NewTicker(15 * time.Second)
 			defer ticker.Stop()
+			defer pingTicker.Stop()
 			heartbeatCounter := 0
 			for {
 				select {
 				case <-done:
 					return
+				case <-pingTicker.C:
+					if err := conn.WriteControl(websocket.PingMessage, []byte("ping"), time.Now().Add(5*time.Second)); err != nil {
+						disconnect()
+						return
+					}
 				case <-ticker.C:
 					heartbeatCounter++
 					now := time.Now().UTC().Format(time.RFC3339)
 					if heartbeatCounter%3 == 0 {
-						_ = a.sendJSON(AgentHeartbeat{Type: "agent.heartbeat", At: now})
+						if err := a.sendJSON(AgentHeartbeat{Type: "agent.heartbeat", At: now}); err != nil {
+							disconnect()
+							return
+						}
 					}
 					stats, statsErr := a.collectHostStats()
 					if statsErr == nil {
-						_ = a.sendJSON(AgentStatus{Type: "agent.status", AgentName: a.conf.AgentName, At: now, Stats: stats})
+						if err := a.sendJSON(AgentStatus{Type: "agent.status", AgentName: a.conf.AgentName, At: now, Stats: stats}); err != nil {
+							disconnect()
+							return
+						}
 					}
 				}
 			}
@@ -800,7 +827,7 @@ func (a *Agent) connectAndServe() {
 		for {
 			_, data, err := conn.ReadMessage()
 			if err != nil {
-				close(done)
+				disconnect()
 				break
 			}
 
@@ -814,15 +841,15 @@ func (a *Agent) connectAndServe() {
 
 			result := a.handleCommand(cmd)
 			if err := a.sendJSON(result); err != nil {
-				close(done)
+				disconnect()
 				break
 			}
 		}
 
+		disconnect()
 		a.mu.Lock()
 		a.conn = nil
 		a.mu.Unlock()
-		_ = conn.Close()
 		time.Sleep(2 * time.Second)
 	}
 }
