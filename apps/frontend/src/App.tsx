@@ -2,81 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import type { Role } from "@vm-manager/shared";
-
-type Session = {
-  token: string;
-  user: {
-    id: string;
-    username: string;
-    role: Role;
-  };
-};
-
-type VmAction = "start" | "stop" | "reboot" | "reinstall" | "resetPassword" | "delete";
-type PageKey = "overview" | "hosts" | "vms" | "users" | "settings" | "my-vms";
-type ModalKind = "createHost" | "createVm" | "createUser" | "editUser" | "showHostSecret" | "showAgentInstallCommand" | null;
-
-type SiteConfig = {
-  siteTitle: string;
-  loginSubtitle: string;
-  sidebarTitle: string;
-};
-
-type VmRow = {
-  id: string;
-  ownerUsername: string;
-  hostKey: string;
-  systemId: string;
-  image: string;
-  diskSizeGb?: number;
-  cpuCores?: number;
-  memoryMb?: number;
-  bandwidthMbps?: number;
-  status: string;
-  containerId?: string;
-  sshPassword?: string;
-  sshPort?: number;
-  openPorts: number[];
-  lastError?: string;
-};
-
-type HostRow = {
-  hostKey: string;
-  name: string;
-  enabled: boolean;
-  online: boolean;
-  agentName?: string;
-  lastHeartbeatAt?: string;
-  lastStatusAt?: string;
-  stats?: {
-    cpuCores: number;
-    cpuUsagePercent: number;
-    memoryTotalMb: number;
-    memoryUsedMb: number;
-    diskTotalGb: number;
-    diskUsedGb: number;
-    networkRxMbps: number;
-    networkTxMbps: number;
-  };
-};
-
-type SystemRow = {
-  id: string;
-  name: string;
-  image: string;
-  description: string;
-};
-
-type UserRow = {
-  id: string;
-  username: string;
-  role: Role;
-};
-
-type MenuItem = {
-  key: PageKey;
-  label: string;
-};
+import { HostsRoute } from "./routes/HostsRoute";
+import { LoginRoute } from "./routes/LoginRoute";
+import { MyVmsRoute } from "./routes/MyVmsRoute";
+import { OverviewRoute } from "./routes/OverviewRoute";
+import { SettingsRoute } from "./routes/SettingsRoute";
+import { UsersRoute } from "./routes/UsersRoute";
+import { VmsRoute } from "./routes/VmsRoute";
+import type { HostRow, MenuItem, ModalKind, PageKey, Session, SiteConfig, SystemRow, UserRow, VmAction, VmRow } from "./types";
 
 const API_BASE = ((import.meta.env.VITE_API_BASE as string | undefined) ?? "").trim();
 const resolveHttpBase = (): string => {
@@ -740,143 +673,65 @@ export function App() {
 
   const renderAdminPage = () => {
     if (page === "overview") {
-      return (
-        <section className="card">
-          <h2 className="section-title">总览</h2>
-          <div className="vm-list">
-            <article className="vm-item">
-              <h3>虚拟机总数</h3>
-              <p>{vms.length}</p>
-            </article>
-            <article className="vm-item">
-              <h3>未分配虚拟机</h3>
-              <p>{vms.filter((vm) => vm.ownerUsername === "unassigned").length}</p>
-            </article>
-            <article className="vm-item">
-              <h3>宿主机节点</h3>
-              <p>{hosts.length}</p>
-            </article>
-            <article className="vm-item">
-              <h3>在线宿主机</h3>
-              <p>{hosts.filter((host) => host.online).length}</p>
-            </article>
-          </div>
-        </section>
-      );
+      return <OverviewRoute vms={vms} hosts={hosts} />;
     }
 
     if (page === "hosts") {
       return (
-        <section className="card">
-          <h2 className="section-title">宿主机节点管理</h2>
-          <div className="actions">
-            <button className="btn btn-primary" onClick={() => setModalKind("createHost")}>新增宿主机</button>
-          </div>
-          <div className="vm-list">
-            {hosts.map((host) => (
-              <article className="vm-item" key={host.hostKey}>
-                <div className="vm-head">
-                  <h3>{host.name}</h3>
-                  <span className={`status ${host.online ? "status-running" : "status-stopped"}`}>{host.online ? "在线" : "离线"}</span>
-                </div>
-                <p>节点密钥: {host.hostKey}</p>
-                <p>启用状态: {host.enabled ? "启用" : "停用"}</p>
-                <p>Agent: {host.agentName ?? "-"}</p>
-                <p>CPU: {host.stats ? `${host.stats.cpuUsagePercent.toFixed(1)}% / ${host.stats.cpuCores}核` : "-"}</p>
-                <p>内存: {host.stats ? `${host.stats.memoryUsedMb} / ${host.stats.memoryTotalMb} MB` : "-"}</p>
-                <p>硬盘: {host.stats ? `${host.stats.diskUsedGb} / ${host.stats.diskTotalGb} GB` : "-"}</p>
-                <p>网络: {host.stats ? `↓${host.stats.networkRxMbps.toFixed(2)} ↑${host.stats.networkTxMbps.toFixed(2)} Mbps` : "-"}</p>
-                <div className="actions">
-                  <button className="btn btn-muted" onClick={() => toggleHost(host.hostKey, !host.enabled)}>{host.enabled ? "停用" : "启用"}</button>
-                  <button className="btn btn-warning" onClick={() => resetHostSecret(host.hostKey)}>重置节点密钥</button>
-                  <button className="btn btn-secondary" onClick={() => void showAgentInstallCommand(host)}>一键安装命令</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+        <HostsRoute
+          hosts={hosts}
+          onCreateHost={() => setModalKind("createHost")}
+          onToggleHost={toggleHost}
+          onResetHostSecret={resetHostSecret}
+          onShowAgentInstallCommand={(host) => {
+            void showAgentInstallCommand(host);
+          }}
+        />
       );
     }
 
     if (page === "users") {
-      return (
-        <section className="card">
-          <h2 className="section-title">用户管理</h2>
-          <div className="actions">
-            <button className="btn btn-primary" onClick={() => setModalKind("createUser")}>新增用户</button>
-          </div>
-          <div className="vm-list">
-            {users.map((user) => (
-              <article className="vm-item" key={user.id}>
-                <div className="vm-head">
-                  <h3>{user.username}</h3>
-                  <span className={`status ${user.role === "admin" ? "status-running" : "status-stopped"}`}>
-                    {user.role === "admin" ? "管理员" : "用户"}
-                  </span>
-                </div>
-                <p>用户 ID: {user.id}</p>
-                <div className="actions">
-                  <button className="btn btn-secondary" onClick={() => openEditUserModal(user)}>编辑用户</button>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      );
+      return <UsersRoute users={users} onCreateUser={() => setModalKind("createUser")} onEditUser={openEditUserModal} />;
     }
 
     if (page === "settings") {
       return (
-        <section className="card">
-          <h2 className="section-title">网站配置</h2>
-          <label>
-            网站标题（浏览器标题）
-            <input value={siteTitleInput} onChange={(event) => setSiteTitleInput(event.target.value)} />
-          </label>
-          <label>
-            登录页副标题
-            <input value={loginSubtitleInput} onChange={(event) => setLoginSubtitleInput(event.target.value)} />
-          </label>
-          <label>
-            侧边栏标题
-            <input value={sidebarTitleInput} onChange={(event) => setSidebarTitleInput(event.target.value)} />
-          </label>
-          <div className="actions">
-            <button className="btn btn-primary" onClick={saveSiteConfig}>保存配置</button>
-          </div>
-        </section>
+        <SettingsRoute
+          siteTitleInput={siteTitleInput}
+          loginSubtitleInput={loginSubtitleInput}
+          sidebarTitleInput={sidebarTitleInput}
+          onSiteTitleChange={setSiteTitleInput}
+          onLoginSubtitleChange={setLoginSubtitleInput}
+          onSidebarTitleChange={setSidebarTitleInput}
+          onSave={() => {
+            void saveSiteConfig();
+          }}
+        />
       );
     }
 
     return (
-      <section className="card">
-        <h2 className="section-title">虚拟机</h2>
-        <div className="actions">
-          <button className="btn btn-primary" onClick={() => setModalKind("createVm")}>新建虚拟机</button>
-        </div>
-        {renderVmCards(true)}
-      </section>
+      <VmsRoute
+        onCreateVm={() => setModalKind("createVm")}
+        vmCards={renderVmCards(true)}
+      />
     );
   };
 
   if (!session) {
     return (
-      <main className="page login-page">
-        <section className="card">
-          <h1>{siteConfig.siteTitle}</h1>
-          <p>{siteConfig.loginSubtitle}</p>
-          <label>
-            用户名
-            <input value={username} onChange={(event) => setUsername(event.target.value)} />
-          </label>
-          <label>
-            密码
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          </label>
-          <button className="btn btn-primary" onClick={login}>登录</button>
-          {error && <p className="error">{error}</p>}
-        </section>
-      </main>
+      <LoginRoute
+        siteTitle={siteConfig.siteTitle}
+        loginSubtitle={siteConfig.loginSubtitle}
+        username={username}
+        password={password}
+        error={error}
+        onUsernameChange={setUsername}
+        onPasswordChange={setPassword}
+        onLogin={() => {
+          void login();
+        }}
+      />
     );
   }
 
@@ -1120,10 +975,7 @@ export function App() {
           {session.user.role === "admin" ? (
             renderAdminPage()
           ) : (
-            <section className="card">
-              <h2 className="section-title">我的虚拟机</h2>
-              {renderVmCards(false)}
-            </section>
+            <MyVmsRoute vmCards={renderVmCards(false)} />
           )}
         </section>
       </main>
