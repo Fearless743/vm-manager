@@ -5,6 +5,7 @@ REPO="Fearless743/vm-manager"
 VERSION="latest"
 INSTALL_DIR="/usr/local/bin"
 INSTALL_SERVICE="true"
+AUTO_INSTALL_DOCKER="true"
 BACKEND_WS_URL=""
 AGENT_SHARED_SECRET=""
 AGENT_NAME=""
@@ -23,6 +24,7 @@ Options:
   --version <tag|latest>            Release tag, default: latest
   --install-dir <path>              Install dir, default: /usr/local/bin
   --no-service                      Install binary only (skip systemd)
+  --skip-docker-install             Do not auto-install Docker
 
 Service env options (required unless --no-service):
   --backend-ws-url <ws-url>
@@ -51,6 +53,56 @@ require_cmd() {
   fi
 }
 
+install_docker_linux() {
+  if command -v apt-get >/dev/null 2>&1; then
+    apt-get update
+    apt-get install -y docker.io
+    return
+  fi
+  if command -v dnf >/dev/null 2>&1; then
+    dnf install -y docker
+    return
+  fi
+  if command -v yum >/dev/null 2>&1; then
+    yum install -y docker
+    return
+  fi
+  if command -v apk >/dev/null 2>&1; then
+    apk add --no-cache docker docker-cli containerd
+    return
+  fi
+  if command -v pacman >/dev/null 2>&1; then
+    pacman -Sy --noconfirm docker
+    return
+  fi
+  echo "unable to auto-install Docker: unsupported package manager" >&2
+  exit 1
+}
+
+ensure_docker_ready() {
+  if [ "$AUTO_INSTALL_DOCKER" != "true" ]; then
+    return
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    if [ "$OS" = "darwin" ]; then
+      echo "Docker not found. Please install Docker Desktop first." >&2
+      exit 1
+    fi
+    echo "Docker not found. Installing Docker..."
+    install_docker_linux
+  fi
+
+  if [ "$OS" = "linux" ] && command -v systemctl >/dev/null 2>&1; then
+    systemctl enable --now docker || true
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    echo "Docker daemon is not ready. Please start Docker and rerun." >&2
+    exit 1
+  fi
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --version)
@@ -63,6 +115,10 @@ while [ "$#" -gt 0 ]; do
       ;;
     --no-service)
       INSTALL_SERVICE="false"
+      shift
+      ;;
+    --skip-docker-install)
+      AUTO_INSTALL_DOCKER="false"
       shift
       ;;
     --backend-ws-url)
@@ -201,6 +257,8 @@ if [ "$INSTALL_SERVICE" != "true" ]; then
   exit 0
 fi
 
+ensure_docker_ready
+
 if [ -z "$BACKEND_WS_URL" ] || [ -z "$AGENT_SHARED_SECRET" ]; then
   echo "--backend-ws-url and --agent-shared-secret are required for service install" >&2
   exit 1
@@ -231,7 +289,7 @@ EOF
 
 cat > "$SERVICE_FILE" <<EOF
 [Unit]
-Description=LXC Manager Agent
+Description=VM Manager Agent
 After=network-online.target docker.service
 Wants=network-online.target
 

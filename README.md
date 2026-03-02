@@ -98,6 +98,8 @@ npm run dev -w @vm-manager/frontend
 
 脚本文件：`scripts/install-agent.sh`
 
+默认会自动安装 Docker（Linux）并尝试启动 Docker 服务，然后安装并启动 Agent。
+
 ### 一键安装并注册 systemd 服务
 
 ```bash
@@ -120,6 +122,7 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
 - `--version <tag|latest>`：发布版本。
 - `--install-dir <path>`：二进制安装目录（默认 `/usr/local/bin`）。
 - `--no-service`：只安装二进制，不写 systemd。
+- `--skip-docker-install`：跳过 Docker 自动安装。
 
 安装 systemd 时必填：
 
