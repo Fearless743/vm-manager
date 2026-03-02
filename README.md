@@ -116,12 +116,12 @@ npm run dev -w @lxc-manager/frontend
   - `linux/amd64`、`linux/arm64`
   - `darwin/amd64`、`darwin/arm64`
   - `windows/amd64`
-- 打 `v*` 标签时自动上传二进制到 GitHub Release。
+- 打任意 Git 标签时自动上传二进制到 GitHub Release。
 
 触发方式：
 
 - push 到 `main`
-- push `v*` 标签
+- push 任意 Git 标签
 - 手动触发（`workflow_dispatch`）
 
 ## Agent 一键安装脚本
