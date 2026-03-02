@@ -171,8 +171,8 @@ export function App() {
   const [hosts, setHosts] = useState<HostRow[]>([]);
   const [systems, setSystems] = useState<SystemRow[]>([]);
   const [users, setUsers] = useState<UserRow[]>([]);
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [assignTargets, setAssignTargets] = useState<Record<string, string>>({});
   const [userRoleTargets, setUserRoleTargets] = useState<Record<string, Role>>({});
   const [userPasswordTargets, setUserPasswordTargets] = useState<Record<string, string>>({});
@@ -835,7 +835,6 @@ export function App() {
           </label>
           <button className="btn btn-primary" onClick={login}>登录</button>
           {error && <p className="error">{error}</p>}
-          <p className="hint">默认账号：admin/admin123，user1/user123</p>
         </section>
       </main>
     );
