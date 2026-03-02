@@ -299,6 +299,7 @@ EOF
 
 systemctl daemon-reload
 systemctl enable --now vm-manager-agent
+systemctl restart vm-manager-agent
 
 echo "Service installed and started: vm-manager-agent"
 echo "Check logs: journalctl -u vm-manager-agent -f"
