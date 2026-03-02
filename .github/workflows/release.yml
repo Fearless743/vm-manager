@@ -140,13 +140,13 @@ jobs:
           CGO_ENABLED: 0
         run: |
           mkdir -p ../../dist
-          BIN="lxc-manager-agent-${GOOS}-${GOARCH}${{ matrix.ext }}"
+          BIN="vm-manager-agent-${GOOS}-${GOARCH}${{ matrix.ext }}"
           go build -trimpath -ldflags='-s -w' -o "../../dist/${BIN}" .
 
       - name: Package artifact
         run: |
           mkdir -p release-assets
-          BIN="lxc-manager-agent-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
+          BIN="vm-manager-agent-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.ext }}"
           if [ "${{ matrix.archive }}" = "zip" ]; then
             zip -j "release-assets/${BIN}.zip" "dist/${BIN}"
           else
