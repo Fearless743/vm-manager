@@ -126,6 +126,11 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: apps/agent/go.mod
+          cache-dependency-path: apps/agent/go.sum
+
+      - name: Download Go modules
+        working-directory: apps/agent
+        run: go mod download
 
       - name: Build binary
         working-directory: apps/agent
@@ -136,7 +141,7 @@ jobs:
         run: |
           mkdir -p ../../dist
           BIN="lxc-manager-agent-${GOOS}-${GOARCH}${{ matrix.ext }}"
-          go build -trimpath -ldflags='-s -w' -o "../../dist/${BIN}" ./main.go
+          go build -trimpath -ldflags='-s -w' -o "../../dist/${BIN}" .
 
       - name: Package artifact
         run: |

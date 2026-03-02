@@ -154,7 +154,6 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
 
 安装 systemd 时必填：
 
-- `--host-key`
 - `--backend-ws-url`
 - `--agent-shared-secret`
 

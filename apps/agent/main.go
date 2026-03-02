@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -264,19 +263,6 @@ func readMemSample() (totalMb int, usedMb int, err error) {
 	totalMb = int(memTotalKb / 1024)
 	usedMb = int((memTotalKb - memAvailKb) / 1024)
 	return totalMb, usedMb, nil
-}
-
-func readDiskSample() (totalGb int, usedGb int, err error) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs("/", &stat); err != nil {
-		return 0, 0, err
-	}
-	total := stat.Blocks * uint64(stat.Bsize)
-	available := stat.Bavail * uint64(stat.Bsize)
-	used := total - available
-	totalGb = int(total / (1024 * 1024 * 1024))
-	usedGb = int(used / (1024 * 1024 * 1024))
-	return totalGb, usedGb, nil
 }
 
 func readNetworkTotals() (rxBytes uint64, txBytes uint64, err error) {
