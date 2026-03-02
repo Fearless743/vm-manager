@@ -9,7 +9,7 @@ services:
       JWT_SECRET: "dev-jwt-secret-change-me"
       ALLOWED_HOST_KEYS: "host-dev-001"
       CORS_ORIGINS: "http://localhost:8080"
-      DATA_FILE: "data/store.json"
+      DATA_FILE: "/app/data/store.json"
       ADMIN_USERNAME: "admin"
       ADMIN_PASSWORD: "admin123"
       DEFAULT_USERNAME: "user1"

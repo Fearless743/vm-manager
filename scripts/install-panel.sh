@@ -153,7 +153,7 @@ services:
       JWT_SECRET: "${JWT_SECRET}"
       ALLOWED_HOST_KEYS: "${ALLOWED_HOST_KEYS}"
       CORS_ORIGINS: "${CORS_ORIGINS}"
-      DATA_FILE: "data/store.json"
+      DATA_FILE: "/app/data/store.json"
       ADMIN_USERNAME: "${ADMIN_USERNAME}"
       ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
       DEFAULT_USERNAME: "${DEFAULT_USERNAME}"
