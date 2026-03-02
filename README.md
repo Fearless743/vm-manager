@@ -50,7 +50,7 @@ npm install
 2. 启动后端：
 
 ```bash
-npm run dev -w @lxc-manager/backend
+npm run dev -w @vm-manager/backend
 ```
 
 3. 启动 Agent（在有 Docker 的宿主机上）：
@@ -63,7 +63,7 @@ AGENT_SHARED_SECRET=<宿主机节点密钥> go run .
 4. 启动前端：
 
 ```bash
-npm run dev -w @lxc-manager/frontend
+npm run dev -w @vm-manager/frontend
 ```
 
 ## 默认账号
@@ -83,14 +83,6 @@ npm run dev -w @lxc-manager/frontend
 - 用户：仅可操作自己名下虚拟机（开机/关机/重启/重装系统/重置密码）。
 - 删除虚拟机仅管理员可执行。
 
-## 宿主机与系统创建流程
-
-- 创建虚拟机时不需要手填镜像名，后端提供系统选项（`/api/systems`）。
-- 创建虚拟机时选择宿主机节点（`/api/hosts` + `/api/vms`）。
-- 宿主机节点密钥由后端随机生成，用于 Agent WebSocket 节点识别。
-- 虚拟机创建后再进行用户分配（`/api/vms/:vmId/assign`）。
-- 创建虚拟机可选配置资源：硬盘（GB）、CPU 核心、内存（MB）、带宽（Mbps）。
-
 ## 安全配置项
 
 - `ALLOWED_HOST_KEYS`：初始化默认节点密钥列表（可选，逗号分隔）。
@@ -106,23 +98,9 @@ npm run dev -w @lxc-manager/frontend
 
 工作流文件：`.github/workflows/release.yml`
 
-功能：
-
-- 构建并推送 Docker 镜像到 GHCR：
-  - `ghcr.io/<owner>/<repo>/backend`
-  - `ghcr.io/<owner>/<repo>/frontend`
-  - `ghcr.io/<owner>/<repo>/agent`
-- 构建 Agent 多平台二进制：
-  - `linux/amd64`、`linux/arm64`
-  - `darwin/amd64`、`darwin/arm64`
-  - `windows/amd64`
-- 打任意 Git 标签时自动上传二进制到 GitHub Release。
-
-触发方式：
-
-- push 到 `main`
-- push 任意 Git 标签
-- 手动触发（`workflow_dispatch`）
+- 构建并推送 Docker 镜像到 GHCR：`backend`、`frontend`、`agent`
+- 构建 Agent 多平台二进制：`linux/amd64`、`linux/arm64`、`darwin/amd64`、`darwin/arm64`、`windows/amd64`
+- push 任意 Git 标签时自动上传二进制到 GitHub Release
 
 ## Agent 一键安装脚本
 
@@ -147,7 +125,6 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
 
 ### 常用参数说明
 
-- `--repo <owner/repo>`：可选，默认 `Fearless743/vm-manager`。
 - `--version <tag|latest>`：发布版本。
 - `--install-dir <path>`：二进制安装目录（默认 `/usr/local/bin`）。
 - `--no-service`：只安装二进制，不写 systemd。
@@ -159,27 +136,22 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
 
 ### 安装后生成的文件
 
-- 环境变量文件：`/etc/lxc-manager-agent.env`
-- 服务文件：`/etc/systemd/system/lxc-manager-agent.service`
+- 环境变量文件：`/etc/vm-manager-agent.env`
+- 服务文件：`/etc/systemd/system/vm-manager-agent.service`
 
 ### 服务管理命令
 
 ```bash
-sudo systemctl status lxc-manager-agent
-sudo journalctl -u lxc-manager-agent -f
-sudo systemctl restart lxc-manager-agent
+sudo systemctl status vm-manager-agent
+sudo journalctl -u vm-manager-agent -f
+sudo systemctl restart vm-manager-agent
 ```
 
 ## 面板端一键安装（生产/测试服务器）
 
 脚本文件：`scripts/install-panel.sh`
 
-该脚本会在目标服务器安装并启动：
-
-- `backend`（控制平面后端）
-- `frontend`（统一入口，反代 `/api`、`/ui-ws`、`/agent-ws`）
-
-默认只暴露一个端口（`8080`），便于你后续再用外层 Nginx 做 HTTPS 反代。
+该脚本会在目标服务器安装并启动 `backend` 和 `frontend`，并默认只暴露一个端口（`8080`）。
 
 ### 一键安装示例
 
@@ -192,7 +164,7 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
 
 ### 可选参数（常用）
 
-- `--base-dir`：安装目录（默认 `/opt/lxc-manager`）
+- `--base-dir`：安装目录（默认 `/opt/vm-manager`）
 - `--ghcr-namespace`：镜像命名空间（默认 `ghcr.io/fearless743/vm-manager`）
 - `--image-tag`：镜像标签（默认 `latest`）
 - `--http-port`：面板端口（默认 `8080`）
@@ -205,7 +177,7 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
 ### 安装后管理命令
 
 ```bash
-cd /opt/lxc-manager
+cd /opt/vm-manager
 docker compose ps
 docker compose logs -f backend
 docker compose logs -f frontend

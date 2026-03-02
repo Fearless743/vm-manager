@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
-    container_name: lxc-manager-backend
+    container_name: vm-manager-backend
     environment:
       BACKEND_PORT: "4000"
       JWT_SECRET: "dev-jwt-secret-change-me"
@@ -22,7 +22,7 @@ services:
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
-    container_name: lxc-manager-frontend
+    container_name: vm-manager-frontend
     ports:
       - "8080:80"
     restart: unless-stopped
@@ -33,7 +33,7 @@ services:
     build:
       context: .
       dockerfile: docker/agent.Dockerfile
-    container_name: lxc-manager-agent
+    container_name: vm-manager-agent
     network_mode: host
     environment:
       BACKEND_WS_URL: "ws://127.0.0.1:8080/agent-ws"

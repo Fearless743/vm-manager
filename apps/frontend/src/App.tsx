@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { Role } from "@lxc-manager/shared";
+import type { Role } from "@vm-manager/shared";
 
 type Session = {
   token: string;
@@ -12,8 +12,14 @@ type Session = {
 };
 
 type VmAction = "start" | "stop" | "reboot" | "reinstall" | "resetPassword" | "delete";
-type PageKey = "overview" | "hosts" | "vms" | "users" | "my-vms";
-type ModalKind = "createHost" | "createVm" | "createUser" | "editUser" | "showHostSecret" | null;
+type PageKey = "overview" | "hosts" | "vms" | "users" | "settings" | "my-vms";
+type ModalKind = "createHost" | "createVm" | "createUser" | "editUser" | "showHostSecret" | "showAgentInstallCommand" | null;
+
+type SiteConfig = {
+  siteTitle: string;
+  loginSubtitle: string;
+  sidebarTitle: string;
+};
 
 type VmRow = {
   id: string;
@@ -86,6 +92,18 @@ const resolveWsBase = (): string => {
   return base.startsWith("https://") ? base.replace("https://", "wss://") : base.replace("http://", "ws://");
 };
 
+const shellQuote = (value: string): string => `'${value.replace(/'/g, `'"'"'`)}'`;
+
+const buildAgentInstallCommand = (hostKey: string): string => {
+  const backendWsUrl = `${resolveWsBase()}/agent-ws`;
+  return [
+    "curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts/install-agent.sh | sudo bash -s --",
+    "  --version latest",
+    `  --backend-ws-url ${shellQuote(backendWsUrl)}`,
+    `  --agent-shared-secret ${shellQuote(hostKey)}`
+  ].join(" \\\n");
+};
+
 const loadSession = (): Session | null => {
   const raw = localStorage.getItem("lxc.session");
   if (!raw) {
@@ -110,10 +128,17 @@ const adminMenu: MenuItem[] = [
   { key: "overview", label: "总览" },
   { key: "hosts", label: "宿主机节点" },
   { key: "vms", label: "虚拟机" },
-  { key: "users", label: "用户管理" }
+  { key: "users", label: "用户管理" },
+  { key: "settings", label: "网站配置" }
 ];
 
 const userMenu: MenuItem[] = [{ key: "my-vms", label: "我的虚拟机" }];
+
+const defaultSiteConfig: SiteConfig = {
+  siteTitle: "LXC 管理平台",
+  loginSubtitle: "请使用管理员或普通用户登录。",
+  sidebarTitle: "LXC 管理平台"
+};
 
 const statusLabel = (status: string): string => {
   if (status === "running") return "运行中";
@@ -163,6 +188,11 @@ export function App() {
   const [bandwidthMbpsInput, setBandwidthMbpsInput] = useState("");
   const [activeUserId, setActiveUserId] = useState<string>("");
   const [rotatedHostSecret, setRotatedHostSecret] = useState<string>("");
+  const [agentInstallCommand, setAgentInstallCommand] = useState<string>("");
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(defaultSiteConfig);
+  const [siteTitleInput, setSiteTitleInput] = useState(defaultSiteConfig.siteTitle);
+  const [loginSubtitleInput, setLoginSubtitleInput] = useState(defaultSiteConfig.loginSubtitle);
+  const [sidebarTitleInput, setSidebarTitleInput] = useState(defaultSiteConfig.sidebarTitle);
   const [error, setError] = useState("");
   const [page, setPage] = useState<PageKey>("overview");
   const [modalKind, setModalKind] = useState<ModalKind>(null);
@@ -179,6 +209,18 @@ export function App() {
   );
 
   const menu = session?.user.role === "admin" ? adminMenu : userMenu;
+
+  const refreshSiteConfig = async () => {
+    const response = await fetch(`${resolveHttpBase()}/api/site-config`);
+    if (!response.ok) {
+      throw new Error(`加载网站配置失败: ${response.status}`);
+    }
+    const config = (await response.json()) as SiteConfig;
+    setSiteConfig(config);
+    setSiteTitleInput(config.siteTitle);
+    setLoginSubtitleInput(config.loginSubtitle);
+    setSidebarTitleInput(config.sidebarTitle);
+  };
 
   const refreshVms = async () => {
     if (!authHeaders) {
@@ -243,6 +285,14 @@ export function App() {
       return next;
     });
   };
+
+  useEffect(() => {
+    refreshSiteConfig().catch((e: Error) => setError(e.message));
+  }, []);
+
+  useEffect(() => {
+    document.title = siteConfig.siteTitle;
+  }, [siteConfig.siteTitle]);
 
   useEffect(() => {
     if (!authHeaders || !session) {
@@ -474,6 +524,43 @@ export function App() {
     setModalKind("showHostSecret");
   };
 
+  const showAgentInstallCommand = async (host: HostRow) => {
+    const command = buildAgentInstallCommand(host.hostKey);
+    setAgentInstallCommand(command);
+    try {
+      await navigator.clipboard.writeText(command);
+    } catch {
+      setError("复制安装命令失败，请手动复制弹窗中的命令");
+    }
+    setModalKind("showAgentInstallCommand");
+  };
+
+  const saveSiteConfig = async () => {
+    if (!authHeaders || session?.user.role !== "admin") {
+      return;
+    }
+    setError("");
+    const response = await fetch(`${resolveHttpBase()}/api/site-config`, {
+      method: "PATCH",
+      headers: authHeaders,
+      body: JSON.stringify({
+        siteTitle: siteTitleInput,
+        loginSubtitle: loginSubtitleInput,
+        sidebarTitle: sidebarTitleInput
+      })
+    });
+    if (!response.ok) {
+      const body = (await response.json()) as { error?: string };
+      setError(body.error ?? "保存网站配置失败");
+      return;
+    }
+    const updated = (await response.json()) as SiteConfig;
+    setSiteConfig(updated);
+    setSiteTitleInput(updated.siteTitle);
+    setLoginSubtitleInput(updated.loginSubtitle);
+    setSidebarTitleInput(updated.sidebarTitle);
+  };
+
   const createUser = async () => {
     if (!authHeaders) {
       return;
@@ -662,6 +749,7 @@ export function App() {
                 <div className="actions">
                   <button className="btn btn-muted" onClick={() => toggleHost(host.hostKey, !host.enabled)}>{host.enabled ? "停用" : "启用"}</button>
                   <button className="btn btn-warning" onClick={() => resetHostSecret(host.hostKey)}>重置节点密钥</button>
+                  <button className="btn btn-secondary" onClick={() => void showAgentInstallCommand(host)}>一键安装命令</button>
                 </div>
               </article>
             ))}
@@ -697,6 +785,29 @@ export function App() {
       );
     }
 
+    if (page === "settings") {
+      return (
+        <section className="card">
+          <h2 className="section-title">网站配置</h2>
+          <label>
+            网站标题（浏览器标题）
+            <input value={siteTitleInput} onChange={(event) => setSiteTitleInput(event.target.value)} />
+          </label>
+          <label>
+            登录页副标题
+            <input value={loginSubtitleInput} onChange={(event) => setLoginSubtitleInput(event.target.value)} />
+          </label>
+          <label>
+            侧边栏标题
+            <input value={sidebarTitleInput} onChange={(event) => setSidebarTitleInput(event.target.value)} />
+          </label>
+          <div className="actions">
+            <button className="btn btn-primary" onClick={saveSiteConfig}>保存配置</button>
+          </div>
+        </section>
+      );
+    }
+
     return (
       <section className="card">
         <h2 className="section-title">虚拟机</h2>
@@ -712,8 +823,8 @@ export function App() {
     return (
       <main className="page login-page">
         <section className="card">
-          <h1>LXC 管理平台</h1>
-          <p>请使用管理员或普通用户登录。</p>
+          <h1>{siteConfig.siteTitle}</h1>
+          <p>{siteConfig.loginSubtitle}</p>
           <label>
             用户名
             <input value={username} onChange={(event) => setUsername(event.target.value)} />
@@ -894,6 +1005,33 @@ export function App() {
       );
     }
 
+    if (modalKind === "showAgentInstallCommand") {
+      title = "Agent 一键安装命令";
+      confirmText = "关闭";
+      onConfirm = async () => {
+        setModalKind(null);
+      };
+      content = (
+        <div className="modal-form">
+          <p>已自动填入当前面板域名与该宿主机节点密钥，可直接在目标宿主机执行。</p>
+          <label>
+            安装命令
+            <textarea value={agentInstallCommand} readOnly rows={6} />
+          </label>
+          <div className="actions">
+            <button
+              className="btn btn-secondary"
+              onClick={() => {
+                void navigator.clipboard.writeText(agentInstallCommand);
+              }}
+            >
+              复制命令
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="modal-overlay" onClick={() => setModalKind(null)}>
         <section className="modal card" onClick={(event) => event.stopPropagation()}>
@@ -924,7 +1062,7 @@ export function App() {
     <>
       <main className="layout">
         <aside className="sidebar card">
-        <h2 className="sidebar-brand">LXC 管理平台</h2>
+        <h2 className="sidebar-brand">{siteConfig.sidebarTitle}</h2>
         <p className="sidebar-user">
           {session.user.username} ({session.user.role})
         </p>

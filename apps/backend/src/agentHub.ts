@@ -11,7 +11,7 @@ import type {
   BackendCommandMessage,
   HostRuntimeStats,
   VmRecord
-} from "@lxc-manager/shared";
+} from "@vm-manager/shared";
 import { config } from "./config.js";
 import { updateVmRecord } from "./store.js";
 

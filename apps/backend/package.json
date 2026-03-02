@@ -1,5 +1,5 @@
 {
-  "name": "@lxc-manager/backend",
+  "name": "@vm-manager/backend",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
@@ -10,7 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@lxc-manager/shared": "0.1.0",
+    "@vm-manager/shared": "0.1.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.21.1",

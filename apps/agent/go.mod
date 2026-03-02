@@ -1,4 +1,4 @@
-module lxc-manager-agent
+module vm-manager-agent
 
 go 1.24.0
 

@@ -38,6 +38,12 @@ export interface HostNodeRecord {
   updatedAt: string;
 }
 
+export interface SiteConfigRecord {
+  siteTitle: string;
+  loginSubtitle: string;
+  sidebarTitle: string;
+}
+
 export interface SystemOption {
   id: string;
   name: string;
@@ -49,6 +55,7 @@ export interface DataStore {
   users: UserRecord[];
   vms: VmRecord[];
   hosts: HostNodeRecord[];
+  siteConfig: SiteConfigRecord;
 }
 
 export interface AgentRegisterMessage {

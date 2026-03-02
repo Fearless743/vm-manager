@@ -1,5 +1,5 @@
 {
-  "name": "@lxc-manager/shared",
+  "name": "@vm-manager/shared",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",

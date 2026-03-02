@@ -1,12 +1,13 @@
 import express from "express";
 import cors from "cors";
 import { createServer } from "node:http";
-import type { HostNodeRecord, Role, SystemOption, UserRecord, VmRecord } from "@lxc-manager/shared";
+import type { HostNodeRecord, Role, SystemOption, UserRecord, VmRecord } from "@vm-manager/shared";
 import { config } from "./config.js";
 import { authenticate, createToken, requireRole, resolveUserByUsername, verifyPassword } from "./auth.js";
 import { AgentHub } from "./agentHub.js";
 import {
   createHostNode,
+  getSiteConfig,
   createUserRecord,
   deleteVmRecord,
   deleteUserRecord,
@@ -19,6 +20,7 @@ import {
   listUsers,
   purgeUncreatedVms,
   rotateHostNodeSecret,
+  updateSiteConfig,
   updateUserRecord,
   updateHostNode,
   updateVmRecord
@@ -106,6 +108,21 @@ const countAdmins = (users: UserRecord[]): number => users.filter((item) => item
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, onlineHosts: hub.getOnlineHosts() });
+});
+
+app.get("/api/site-config", async (_req, res) => {
+  const siteConfig = await getSiteConfig();
+  res.json(siteConfig);
+});
+
+app.patch("/api/site-config", authenticate, requireRole(["admin"]), async (req, res) => {
+  const { siteTitle, loginSubtitle, sidebarTitle } = req.body as {
+    siteTitle?: string;
+    loginSubtitle?: string;
+    sidebarTitle?: string;
+  };
+  const updated = await updateSiteConfig({ siteTitle, loginSubtitle, sidebarTitle });
+  res.json(updated);
 });
 
 app.post("/api/auth/login", async (req, res) => {

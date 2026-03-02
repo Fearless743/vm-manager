@@ -523,9 +523,9 @@ func (a *Agent) createVM(ctx context.Context, vmID string, imageName string, req
 		},
 		ExposedPorts: portSet,
 		Labels: map[string]string{
-			"lxc-manager.managed":       "true",
-			"lxc-manager.vmId":          vmID,
-			"lxc-manager.bandwidthMbps": strconv.Itoa(resources.BandwidthMbps),
+			"vm-manager.managed":       "true",
+			"vm-manager.vmId":          vmID,
+			"vm-manager.bandwidthMbps": strconv.Itoa(resources.BandwidthMbps),
 		},
 	}
 	hostCfg := &container.HostConfig{
@@ -567,8 +567,8 @@ func (a *Agent) createVM(ctx context.Context, vmID string, imageName string, req
 
 func (a *Agent) findContainerIDByVMID(ctx context.Context, vmID string) (string, error) {
 	f := filters.NewArgs()
-	f.Add("label", "lxc-manager.vmId="+vmID)
-	f.Add("label", "lxc-manager.managed=true")
+	f.Add("label", "vm-manager.vmId="+vmID)
+	f.Add("label", "vm-manager.managed=true")
 	containers, err := a.docker.ContainerList(ctx, container.ListOptions{All: true, Filters: f})
 	if err != nil {
 		return "", err

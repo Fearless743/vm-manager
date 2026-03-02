@@ -1,5 +1,5 @@
 {
-  "name": "lxc-manager",
+  "name": "vm-manager",
   "private": true,
   "version": "0.1.0",
   "workspaces": [
@@ -8,8 +8,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @lxc-manager/shared && npm run build -w @lxc-manager/backend && npm run build -w @lxc-manager/frontend",
-    "dev": "npm run dev -w @lxc-manager/backend",
-    "typecheck": "npm run build -w @lxc-manager/shared && npm run typecheck -w @lxc-manager/backend && npm run typecheck -w @lxc-manager/frontend"
+    "build": "npm run build -w @vm-manager/shared && npm run build -w @vm-manager/backend && npm run build -w @vm-manager/frontend",
+    "dev": "npm run dev -w @vm-manager/backend",
+    "typecheck": "npm run build -w @vm-manager/shared && npm run typecheck -w @vm-manager/backend && npm run typecheck -w @vm-manager/frontend"
   }
 }

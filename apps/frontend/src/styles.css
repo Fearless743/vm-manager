@@ -154,7 +154,8 @@ label {
 }
 
 input,
-select {
+select,
+textarea {
   border: 1px solid #a9c9de;
   border-radius: 10px;
   padding: 0.62rem;
@@ -165,9 +166,16 @@ select {
 
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible {
   outline: 2px solid #1e86c7;
   outline-offset: 1px;
+}
+
+.modal-form textarea {
+  font-family: "IBM Plex Mono", "Fira Code", monospace;
+  min-height: 7.5rem;
+  resize: vertical;
 }
 
 button {

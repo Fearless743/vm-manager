@@ -1,4 +1,4 @@
-import type { Role } from "@lxc-manager/shared";
+import type { Role } from "@vm-manager/shared";
 
 export interface AuthenticatedUser {
   id: string;

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
-import type { Role, UserRecord } from "@lxc-manager/shared";
+import type { Role, UserRecord } from "@vm-manager/shared";
 import { config } from "./config.js";
 import { getStore } from "./store.js";
 

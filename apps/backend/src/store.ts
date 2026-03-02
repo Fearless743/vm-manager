@@ -1,4 +1,4 @@
-import type { DataStore, HostNodeRecord, Role, UserRecord, VmRecord } from "@lxc-manager/shared";
+import type { DataStore, HostNodeRecord, Role, SiteConfigRecord, UserRecord, VmRecord } from "@vm-manager/shared";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -52,6 +52,12 @@ const defaultUsers = async () => {
   ];
 };
 
+const defaultSiteConfig = (): SiteConfigRecord => ({
+  siteTitle: "LXC 管理平台",
+  loginSubtitle: "请使用管理员或普通用户登录。",
+  sidebarTitle: "LXC 管理平台"
+});
+
 export const loadStore = async (): Promise<DataStore> => {
   if (cache) {
     return cache;
@@ -62,7 +68,11 @@ export const loadStore = async (): Promise<DataStore> => {
     const normalized: DataStore = {
       users: parsed.users ?? [],
       vms: parsed.vms ?? [],
-      hosts: parsed.hosts ?? defaultHosts()
+      hosts: parsed.hosts ?? defaultHosts(),
+      siteConfig: {
+        ...defaultSiteConfig(),
+        ...(parsed.siteConfig ?? {})
+      }
     };
 
     const idMapping = new Map<string, string>();
@@ -96,7 +106,7 @@ export const loadStore = async (): Promise<DataStore> => {
     return cache;
   } catch {
     const users = await defaultUsers();
-    const initial: DataStore = { users, vms: [], hosts: defaultHosts() };
+    const initial: DataStore = { users, vms: [], hosts: defaultHosts(), siteConfig: defaultSiteConfig() };
     await persistStore(initial);
     cache = initial;
     return initial;
@@ -319,4 +329,36 @@ export const rotateHostNodeSecret = async (hostKey: string): Promise<HostNodeRec
   });
   await persistStore(store);
   return host;
+};
+
+export const getSiteConfig = async (): Promise<SiteConfigRecord> => {
+  const store = await getStore();
+  if (!store.siteConfig) {
+    store.siteConfig = defaultSiteConfig();
+    await persistStore(store);
+  }
+  return {
+    ...defaultSiteConfig(),
+    ...store.siteConfig
+  };
+};
+
+export const updateSiteConfig = async (
+  patch: Partial<SiteConfigRecord>
+): Promise<SiteConfigRecord> => {
+  const store = await getStore();
+  const current = {
+    ...defaultSiteConfig(),
+    ...store.siteConfig
+  };
+  const next: SiteConfigRecord = {
+    siteTitle: typeof patch.siteTitle === "string" ? patch.siteTitle.trim() || current.siteTitle : current.siteTitle,
+    loginSubtitle:
+      typeof patch.loginSubtitle === "string" ? patch.loginSubtitle.trim() || current.loginSubtitle : current.loginSubtitle,
+    sidebarTitle:
+      typeof patch.sidebarTitle === "string" ? patch.sidebarTitle.trim() || current.sidebarTitle : current.sidebarTitle
+  };
+  store.siteConfig = next;
+  await persistStore(store);
+  return next;
 };

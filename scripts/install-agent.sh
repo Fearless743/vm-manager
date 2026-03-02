@@ -152,7 +152,7 @@ echo "Fetching release metadata from ${API_URL}"
 METADATA_FILE="${TMP_DIR}/release.json"
 curl -fsSL "$API_URL" -o "$METADATA_FILE"
 
-ASSET_NAME_PREFIX="lxc-manager-agent-${OS}-${ARCH}"
+ASSET_NAME_PREFIX="vm-manager-agent-${OS}-${ARCH}"
 ASSET_URL="$(python3 - "$METADATA_FILE" "$ASSET_NAME_PREFIX" <<'PY'
 import json
 import sys
@@ -187,14 +187,14 @@ else
   tar -xzf "$ASSET_FILE" -C "$TMP_DIR"
 fi
 
-BIN_SRC="${TMP_DIR}/lxc-manager-agent-${OS}-${ARCH}"
+BIN_SRC="${TMP_DIR}/vm-manager-agent-${OS}-${ARCH}"
 if [ ! -f "$BIN_SRC" ]; then
   echo "downloaded archive does not contain expected binary: $BIN_SRC" >&2
   exit 1
 fi
 
-install -m 0755 "$BIN_SRC" "${INSTALL_DIR}/lxc-manager-agent"
-echo "Installed binary: ${INSTALL_DIR}/lxc-manager-agent"
+install -m 0755 "$BIN_SRC" "${INSTALL_DIR}/vm-manager-agent"
+echo "Installed binary: ${INSTALL_DIR}/vm-manager-agent"
 
 if [ "$INSTALL_SERVICE" != "true" ]; then
   echo "Binary-only install complete."
@@ -215,8 +215,8 @@ if [ -z "$AGENT_NAME" ]; then
   AGENT_NAME="$(hostname)-agent"
 fi
 
-ENV_FILE="/etc/lxc-manager-agent.env"
-SERVICE_FILE="/etc/systemd/system/lxc-manager-agent.service"
+ENV_FILE="/etc/vm-manager-agent.env"
+SERVICE_FILE="/etc/systemd/system/vm-manager-agent.service"
 
 cat > "$ENV_FILE" <<EOF
 BACKEND_WS_URL=${BACKEND_WS_URL}
@@ -238,7 +238,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 EnvironmentFile=${ENV_FILE}
-ExecStart=${INSTALL_DIR}/lxc-manager-agent
+ExecStart=${INSTALL_DIR}/vm-manager-agent
 Restart=always
 RestartSec=3
 
@@ -247,7 +247,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable --now lxc-manager-agent
+systemctl enable --now vm-manager-agent
 
-echo "Service installed and started: lxc-manager-agent"
-echo "Check logs: journalctl -u lxc-manager-agent -f"
+echo "Service installed and started: vm-manager-agent"
+echo "Check logs: journalctl -u vm-manager-agent -f"

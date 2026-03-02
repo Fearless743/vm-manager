@@ -13,8 +13,8 @@ RUN npm ci
 COPY apps/backend apps/backend
 COPY packages/shared packages/shared
 
-RUN npm run build -w @lxc-manager/shared && npm run build -w @lxc-manager/backend
+RUN npm run build -w @vm-manager/shared && npm run build -w @vm-manager/backend
 
 EXPOSE 4000
 
-CMD ["npm", "run", "start", "-w", "@lxc-manager/backend"]
+CMD ["npm", "run", "start", "-w", "@vm-manager/backend"]

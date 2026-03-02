@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="/opt/lxc-manager"
+BASE_DIR="/opt/vm-manager"
 GHCR_NAMESPACE="ghcr.io/fearless743/vm-manager"
 IMAGE_TAG="latest"
 HTTP_PORT="8080"
@@ -19,7 +19,7 @@ usage() {
   install-panel.sh [options]
 
 可选参数：
-  --base-dir <dir>                 安装目录，默认 /opt/lxc-manager
+  --base-dir <dir>                 安装目录，默认 /opt/vm-manager
   --ghcr-namespace <ns>            镜像命名空间，默认 ghcr.io/fearless743/vm-manager
   --image-tag <tag>                镜像标签，默认 latest
   --http-port <port>               面板对外端口，默认 8080
@@ -147,7 +147,7 @@ cat > "${BASE_DIR}/docker-compose.yml" <<EOF
 services:
   backend:
     image: ${GHCR_NAMESPACE}/backend:${IMAGE_TAG}
-    container_name: lxc-manager-backend
+    container_name: vm-manager-backend
     environment:
       BACKEND_PORT: "4000"
       JWT_SECRET: "${JWT_SECRET}"
@@ -164,7 +164,7 @@ services:
 
   frontend:
     image: ${GHCR_NAMESPACE}/frontend:${IMAGE_TAG}
-    container_name: lxc-manager-frontend
+    container_name: vm-manager-frontend
     ports:
       - "${HTTP_PORT}:80"
     restart: unless-stopped

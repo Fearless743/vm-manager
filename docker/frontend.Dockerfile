@@ -13,7 +13,7 @@ RUN npm ci
 COPY apps/frontend apps/frontend
 COPY packages/shared packages/shared
 
-RUN npm run build -w @lxc-manager/shared && npm run build -w @lxc-manager/frontend
+RUN npm run build -w @vm-manager/shared && npm run build -w @vm-manager/frontend
 
 FROM nginx:1.27-alpine
 
