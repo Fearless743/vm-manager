@@ -94,14 +94,6 @@ npm run dev -w @vm-manager/frontend
 - `frontend`（nginx）统一反代：`/api`、`/ui-ws`、`/agent-ws` 到内部 backend。
 - 便于后续你在外层 Nginx 再做统一 HTTPS 反代，不产生浏览器跨域。
 
-## GitHub Actions（GHCR + Agent 多平台二进制）
-
-工作流文件：`.github/workflows/release.yml`
-
-- 构建并推送 Docker 镜像到 GHCR：`backend`、`frontend`、`agent`
-- 构建 Agent 多平台二进制：`linux/amd64`、`linux/arm64`、`darwin/amd64`、`darwin/arm64`、`windows/amd64`
-- push 任意 Git 标签时自动上传二进制到 GitHub Release
-
 ## Agent 一键安装脚本
 
 脚本文件：`scripts/install-agent.sh`
