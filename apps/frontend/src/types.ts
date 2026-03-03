@@ -82,3 +82,9 @@ export type MenuItem = {
   key: PageKey;
   label: string;
 };
+
+export type DashboardViewStore = {
+  vms: VmRow[];
+  hosts: HostRow[];
+  users: UserRow[];
+};

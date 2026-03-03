@@ -3,17 +3,10 @@ services:
     build:
       context: .
       dockerfile: docker/backend.Dockerfile
-    container_name: vm-manager-backend
     environment:
-      BACKEND_PORT: "4000"
-      JWT_SECRET: "dev-jwt-secret-change-me"
-      ALLOWED_HOST_KEYS: "host-dev-001"
-      CORS_ORIGINS: "http://localhost:8080"
-      DATABASE_FILE: "/app/data/store.db"
-      ADMIN_USERNAME: "admin"
-      ADMIN_PASSWORD: "admin123"
-      DEFAULT_USERNAME: "user1"
-      DEFAULT_USER_PASSWORD: "user123"
+      JWT_SECRET: "${JWT_SECRET:-dev-jwt-secret-change-me}"
+      ALLOWED_HOST_KEYS: "${ALLOWED_HOST_KEYS:-host-dev-001}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:8080}"
     volumes:
       - ./data:/app/data
     restart: unless-stopped
@@ -22,30 +15,20 @@ services:
     build:
       context: .
       dockerfile: docker/frontend.Dockerfile
-    container_name: vm-manager-frontend
     ports:
-      - "8080:80"
+      - "${HTTP_PORT:-8080}:80"
     restart: unless-stopped
-    depends_on:
-      - backend
 
   agent:
     build:
       context: .
       dockerfile: docker/agent.Dockerfile
-    container_name: vm-manager-agent
     network_mode: host
     environment:
-      BACKEND_WS_URL: "ws://127.0.0.1:8080/agent-ws"
-      AGENT_NAME: "agent-go-local"
-      AGENT_SHARED_SECRET: "host-dev-001"
-      SSH_CONTAINER_PORT: "2222"
-      MIN_HOST_PORT: "20000"
-      MAX_HOST_PORT: "60000"
-      EXTRA_OPEN_PORT_COUNT: "100"
+      BACKEND_WS_URL: "${BACKEND_WS_URL:-ws://127.0.0.1:8080/agent-ws}"
+      AGENT_SHARED_SECRET: "${AGENT_SHARED_SECRET:-host-dev-001}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     restart: unless-stopped
     depends_on:
-      - backend
       - frontend

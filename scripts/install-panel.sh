@@ -8,8 +8,8 @@ HTTP_PORT="8080"
 JWT_SECRET=""
 ADMIN_USERNAME="admin"
 ADMIN_PASSWORD="admin123"
-DEFAULT_USERNAME="user1"
-DEFAULT_USER_PASSWORD="user123"
+DEFAULT_USERNAME=""
+DEFAULT_USER_PASSWORD=""
 CORS_ORIGINS=""
 ALLOWED_HOST_KEYS=""
 
@@ -26,8 +26,8 @@ usage() {
   --jwt-secret <secret>            JWT 密钥（推荐显式传入）
   --admin-username <name>          管理员用户名，默认 admin
   --admin-password <password>      管理员密码，默认 admin123
-  --default-username <name>        默认普通用户，默认 user1
-  --default-user-password <pwd>    默认普通用户密码，默认 user123
+  --default-username <name>        可选，初始化普通用户
+  --default-user-password <pwd>    可选，初始化普通用户密码
   --cors-origins <origins>         CORS_ORIGINS，默认自动使用 http://localhost:<port>
   --allowed-host-keys <keys>       初始化节点密钥列表（逗号分隔，可选）
   --ghcr-username <name>           可选，GHCR 用户名（私有仓库时使用）
@@ -126,11 +126,7 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 if [ -z "$JWT_SECRET" ]; then
-  JWT_SECRET="$(python3 - <<'PY'
-import secrets
-print(secrets.token_urlsafe(48))
-PY
-)"
+  JWT_SECRET="$(tr -dc 'A-Za-z0-9._~-' </dev/urandom | head -c 64)"
 fi
 
 if [ -z "$CORS_ORIGINS" ]; then

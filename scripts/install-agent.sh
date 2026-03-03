@@ -161,7 +161,6 @@ done
 
 require_cmd curl
 require_cmd tar
-require_cmd unzip
 require_cmd mktemp
 require_cmd python3
 
@@ -232,6 +231,7 @@ curl -fsSL "$ASSET_URL" -o "$ASSET_FILE"
 mkdir -p "$INSTALL_DIR"
 
 if [[ "$ASSET_URL" == *.zip ]]; then
+  require_cmd unzip
   unzip -o "$ASSET_FILE" -d "$TMP_DIR"
 else
   tar -xzf "$ASSET_FILE" -C "$TMP_DIR"
@@ -251,12 +251,12 @@ if [ "$INSTALL_SERVICE" != "true" ]; then
   exit 0
 fi
 
-ensure_docker_ready
-
 if [ -z "$BACKEND_WS_URL" ] || [ -z "$AGENT_SHARED_SECRET" ]; then
   echo "--backend-ws-url and --agent-shared-secret are required for service install" >&2
   exit 1
 fi
+
+ensure_docker_ready
 
 if ! command -v systemctl >/dev/null 2>&1; then
   echo "systemctl not found, skip service setup" >&2
@@ -299,7 +299,6 @@ EOF
 
 systemctl daemon-reload
 systemctl enable --now vm-manager-agent
-systemctl restart vm-manager-agent
 
 echo "Service installed and started: vm-manager-agent"
 echo "Check logs: journalctl -u vm-manager-agent -f"

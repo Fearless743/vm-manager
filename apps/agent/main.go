@@ -22,20 +22,25 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
+	"github.com/docker/docker/api/types/volume"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	"github.com/gorilla/websocket"
 )
 
 type Config struct {
-	BackendWSURL       string
-	AgentName          string
-	Secret             string
-	SSHContainerPort   int
-	MinHostPort        int
-	MaxHostPort        int
-	ExtraOpenPortCount int
+	BackendWSURL          string
+	AgentName             string
+	Secret                string
+	SSHContainerPort      int
+	MinHostPort           int
+	MaxHostPort           int
+	ExtraOpenPortCount    int
+	PersistVMData         bool
+	DeleteDataOnDelete    bool
+	DeleteDataOnReinstall bool
 }
 
 const sshLoginUsername = "root"
@@ -128,15 +133,33 @@ func getEnvInt(name string, fallback int) int {
 	return v
 }
 
+func getEnvBool(name string, fallback bool) bool {
+	raw := strings.TrimSpace(strings.ToLower(os.Getenv(name)))
+	if raw == "" {
+		return fallback
+	}
+	switch raw {
+	case "1", "true", "yes", "y", "on":
+		return true
+	case "0", "false", "no", "n", "off":
+		return false
+	default:
+		return fallback
+	}
+}
+
 func loadConfig() Config {
 	conf := Config{
-		BackendWSURL:       getEnv("BACKEND_WS_URL", "ws://localhost:4000/agent-ws"),
-		AgentName:          getEnv("AGENT_NAME", "agent-go-local"),
-		Secret:             getEnv("AGENT_SHARED_SECRET", "dev-agent-secret-change-me"),
-		SSHContainerPort:   getEnvInt("SSH_CONTAINER_PORT", 2222),
-		MinHostPort:        getEnvInt("MIN_HOST_PORT", 20000),
-		MaxHostPort:        getEnvInt("MAX_HOST_PORT", 60000),
-		ExtraOpenPortCount: getEnvInt("EXTRA_OPEN_PORT_COUNT", 100),
+		BackendWSURL:          getEnv("BACKEND_WS_URL", "ws://localhost:4000/agent-ws"),
+		AgentName:             getEnv("AGENT_NAME", "agent-go-local"),
+		Secret:                getEnv("AGENT_SHARED_SECRET", "dev-agent-secret-change-me"),
+		SSHContainerPort:      getEnvInt("SSH_CONTAINER_PORT", 2222),
+		MinHostPort:           getEnvInt("MIN_HOST_PORT", 20000),
+		MaxHostPort:           getEnvInt("MAX_HOST_PORT", 60000),
+		ExtraOpenPortCount:    getEnvInt("EXTRA_OPEN_PORT_COUNT", 100),
+		PersistVMData:         getEnvBool("PERSIST_VM_DATA", true),
+		DeleteDataOnDelete:    getEnvBool("DELETE_DATA_ON_DELETE", true),
+		DeleteDataOnReinstall: getEnvBool("DELETE_DATA_ON_REINSTALL", true),
 	}
 	return conf
 }
@@ -466,6 +489,38 @@ func (a *Agent) ensureImage(ctx context.Context, imageName string) error {
 	return nil
 }
 
+func vmDataVolumeName(vmID string) string {
+	return "vm-manager-vm-" + vmID + "-data"
+}
+
+func (a *Agent) ensureVMDataVolume(ctx context.Context, vmID string) (string, error) {
+	name := vmDataVolumeName(vmID)
+	_, err := a.docker.VolumeInspect(ctx, name)
+	if err == nil {
+		return name, nil
+	}
+	_, err = a.docker.VolumeCreate(ctx, volume.CreateOptions{
+		Name: name,
+		Labels: map[string]string{
+			"vm-manager.managed": "true",
+			"vm-manager.vmId":    vmID,
+		},
+	})
+	if err != nil {
+		return "", err
+	}
+	return name, nil
+}
+
+func (a *Agent) removeVMDataVolume(ctx context.Context, vmID string) error {
+	name := vmDataVolumeName(vmID)
+	err := a.docker.VolumeRemove(ctx, name, true)
+	if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no such volume") {
+		return err
+	}
+	return nil
+}
+
 func resourcesFromPayload(payload map[string]interface{}) VMResources {
 	res := VMResources{}
 	if v, ok := getInt(payload, "diskSizeGb"); ok && v > 0 {
@@ -535,6 +590,21 @@ func (a *Agent) createVM(ctx context.Context, vmID string, imageName string, req
 		portMap[p] = []nat.PortBinding{{HostIP: "0.0.0.0", HostPort: strconv.Itoa(hostPort)}}
 	}
 
+	dataVolumeName := ""
+	mounts := make([]mount.Mount, 0)
+	if a.conf.PersistVMData {
+		volumeName, volumeErr := a.ensureVMDataVolume(ctx, vmID)
+		if volumeErr != nil {
+			return nil, volumeErr
+		}
+		dataVolumeName = volumeName
+		mounts = append(mounts, mount.Mount{
+			Type:   mount.TypeVolume,
+			Source: volumeName,
+			Target: "/config",
+		})
+	}
+
 	cfg := &container.Config{
 		Image: imageName,
 		Env: []string{
@@ -552,6 +622,7 @@ func (a *Agent) createVM(ctx context.Context, vmID string, imageName string, req
 	}
 	hostCfg := &container.HostConfig{
 		PortBindings: portMap,
+		Mounts:       mounts,
 		RestartPolicy: container.RestartPolicy{
 			Name: "unless-stopped",
 		},
@@ -590,6 +661,7 @@ func (a *Agent) createVM(ctx context.Context, vmID string, imageName string, req
 		"cpuCores":      resources.CPUCores,
 		"memoryMb":      resources.MemoryMb,
 		"bandwidthMbps": resources.BandwidthMbps,
+		"dataVolume":    dataVolumeName,
 	}, nil
 }
 
@@ -691,6 +763,12 @@ func (a *Agent) handleCommand(cmd BackendCommand) AgentResult {
 			out.Error = err.Error()
 			return out
 		}
+		if a.conf.PersistVMData && a.conf.DeleteDataOnReinstall {
+			if err := a.removeVMDataVolume(ctx, cmd.VMID); err != nil {
+				out.Error = err.Error()
+				return out
+			}
+		}
 		imageName := "lscr.io/linuxserver/openssh-server:latest"
 		if v, ok := getString(cmd.Payload, "image"); ok {
 			imageName = v
@@ -747,6 +825,12 @@ func (a *Agent) handleCommand(cmd BackendCommand) AgentResult {
 		if err != nil {
 			out.Error = err.Error()
 			return out
+		}
+		if a.conf.PersistVMData && a.conf.DeleteDataOnDelete {
+			if err := a.removeVMDataVolume(ctx, cmd.VMID); err != nil {
+				out.Error = err.Error()
+				return out
+			}
 		}
 		out.OK = true
 		return out

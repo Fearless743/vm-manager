@@ -69,11 +69,13 @@ npm run dev -w @vm-manager/frontend
 ## 默认账号
 
 - 管理员：`admin` / `admin123`
-- 用户：`user1` / `user123`
 
-可通过后端环境变量覆盖：
+可通过后端环境变量覆盖管理员账号：
 
 - `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+
+如需初始化普通用户，可额外设置：
+
 - `DEFAULT_USERNAME`, `DEFAULT_USER_PASSWORD`
 
 ## 角色能力
@@ -88,6 +90,28 @@ npm run dev -w @vm-manager/frontend
 - `ALLOWED_HOST_KEYS`：初始化默认节点密钥列表（可选，逗号分隔）。
 - `CORS_ORIGINS`：允许访问后端 API 的来源（逗号分隔）。
 
+## VM 数据持久化与删除策略（Agent）
+
+Agent 创建 VM（Docker 容器）时，默认会为每台 VM 创建并挂载一个 Docker named volume：
+
+- Volume 命名：`vm-manager-vm-<vmId>-data`
+- 挂载点：`/config`
+- 默认开启持久化：`PERSIST_VM_DATA=true`
+
+可通过以下环境变量控制删除行为：
+
+- `DELETE_DATA_ON_DELETE`（默认 `true`）  
+  删除 VM 时是否同时删除数据卷。
+- `DELETE_DATA_ON_REINSTALL`（默认 `true`）  
+  重装 VM 时是否同时删除旧数据卷。
+
+策略建议：
+
+- 如果你希望“删除/重装后保留业务数据”，请将对应变量设为 `false`。
+- 如果你希望“删除/重装即彻底清理数据”，保持默认 `true` 即可。
+
+> 说明：backend 的业务元数据（如 VM 记录、端口、状态等）仍保存在 `data/store.db`（Docker 部署下为 `./data` 映射目录）。
+
 ## 单端口部署模式
 
 - Docker 仅对外暴露一个端口（`8080`）。
@@ -98,7 +122,11 @@ npm run dev -w @vm-manager/frontend
 
 脚本文件：`scripts/install-agent.sh`
 
-默认会自动安装 Docker（Linux）并尝试启动 Docker 服务，然后安装并启动 Agent。
+脚本行为（默认）：
+
+- 安装 `vm-manager-agent` 二进制到 `/usr/local/bin`。
+- 安装 systemd 服务并启动 Agent。
+- 在 Linux 下若未安装 Docker，会尝试自动安装并启动 Docker 服务。
 
 ### 一键安装并注册 systemd 服务
 
@@ -109,6 +137,11 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
   --agent-shared-secret <你的AGENT_SHARED_SECRET>
 ```
 
+安装 systemd 服务时，下面两个参数必填：
+
+- `--backend-ws-url`
+- `--agent-shared-secret`
+
 ### 仅安装二进制（不安装 systemd）
 
 ```bash
@@ -117,17 +150,14 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
   --no-service
 ```
 
+说明：使用 `--no-service` 时不会进行 Docker 就绪检查，也不会写入 systemd 文件。
+
 ### 常用参数说明
 
 - `--version <tag|latest>`：发布版本。
 - `--install-dir <path>`：二进制安装目录（默认 `/usr/local/bin`）。
 - `--no-service`：只安装二进制，不写 systemd。
 - `--skip-docker-install`：跳过 Docker 自动安装。
-
-安装 systemd 时必填：
-
-- `--backend-ws-url`
-- `--agent-shared-secret`
 
 ### 安装后生成的文件
 
@@ -146,7 +176,13 @@ sudo systemctl restart vm-manager-agent
 
 脚本文件：`scripts/install-panel.sh`
 
-该脚本会在目标服务器安装并启动 `backend` 和 `frontend`，并默认只暴露一个端口（`8080`）。
+该脚本会在目标服务器安装并启动 `backend` 和 `frontend`，默认只暴露一个端口（`8080`）。
+
+脚本行为（默认）：
+
+- 生成 `${BASE_DIR}/docker-compose.yml`（默认目录 `/opt/vm-manager`）。
+- 自动创建 `JWT_SECRET`（如果未显式传入 `--jwt-secret`）。
+- 首次拉取镜像并后台启动服务。
 
 ### 一键安装示例
 
@@ -163,7 +199,7 @@ curl -fsSL https://raw.githubusercontent.com/Fearless743/vm-manager/main/scripts
 - `--ghcr-namespace`：镜像命名空间（默认 `ghcr.io/fearless743/vm-manager`）
 - `--image-tag`：镜像标签（默认 `latest`）
 - `--http-port`：面板端口（默认 `8080`）
-- `--jwt-secret`：JWT 密钥（不传会自动生成）
+- `--jwt-secret`：JWT 密钥（推荐显式传入；不传会自动生成）
 - `--admin-username` / `--admin-password`
 - `--default-username` / `--default-user-password`
 - `--allowed-host-keys`：初始化节点密钥（可选）

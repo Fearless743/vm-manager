@@ -29,6 +29,6 @@ export const config = {
   legacyDataFile,
   adminUsername: process.env.ADMIN_USERNAME ?? "admin",
   adminPassword: process.env.ADMIN_PASSWORD ?? "admin123",
-  defaultUsername: process.env.DEFAULT_USERNAME ?? "user1",
-  defaultUserPassword: process.env.DEFAULT_USER_PASSWORD ?? "user123"
+  defaultUsername: process.env.DEFAULT_USERNAME?.trim() || undefined,
+  defaultUserPassword: process.env.DEFAULT_USER_PASSWORD?.trim() || undefined
 };

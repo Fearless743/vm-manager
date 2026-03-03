@@ -48,29 +48,31 @@ const defaultHosts = (): HostNodeRecord[] => {
 };
 
 const defaultUsers = async (): Promise<UserRecord[]> => {
-  const [adminHash, userHash] = await Promise.all([
-    bcrypt.hash(config.adminPassword, 10),
-    bcrypt.hash(config.defaultUserPassword, 10)
-  ]);
-  return [
+  const adminHash = await bcrypt.hash(config.adminPassword, 10);
+  const users: UserRecord[] = [
     {
       id: randomUUID(),
       username: config.adminUsername,
       passwordHash: adminHash,
       role: "admin"
-    },
-    {
-      id: randomUUID(),
-      username: config.defaultUsername,
-      passwordHash: userHash,
-      role: "user"
     }
   ];
+
+  if (config.defaultUsername && config.defaultUserPassword) {
+    users.push({
+      id: randomUUID(),
+      username: config.defaultUsername,
+      passwordHash: await bcrypt.hash(config.defaultUserPassword, 10),
+      role: "user"
+    });
+  }
+
+  return users;
 };
 
 const defaultSiteConfig = (): SiteConfigRecord => ({
   siteTitle: "LXC 管理平台",
-  loginSubtitle: "请使用管理员或普通用户登录。",
+  loginSubtitle: "请使用管理员登录。",
   sidebarTitle: "LXC 管理平台"
 });
 
