@@ -4,4 +4,4 @@ dist
 **/dist
 .git
 .env
-data
+/data
