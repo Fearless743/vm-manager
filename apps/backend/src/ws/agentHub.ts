@@ -12,8 +12,8 @@ import type {
   HostRuntimeStats,
   VmRecord
 } from "@vm-manager/shared";
-import { config } from "./config.js";
-import { findVmById, updateVmRecord } from "./store.js";
+import { config } from "../config.js";
+import { findVmById, updateVmRecord } from "../data/store.js";
 
 type PendingRequest = {
   vmId: string;
@@ -29,6 +29,7 @@ export class AgentHub {
   private readonly uiWss: WebSocketServer;
   private readonly socketsByHost = new Map<string, WebSocket>();
   private readonly pending = new Map<string, PendingRequest>();
+  private readonly uiBroadcastTimers = new Map<string, NodeJS.Timeout>();
   private readonly resolveHostBySecret: (secret: string) => Promise<string | null>;
   private readonly hostRuntimeByKey = new Map<
     string,
@@ -90,25 +91,36 @@ export class AgentHub {
   private sendUiSnapshot(ws: WebSocket): void {
     const hosts = [...this.hostRuntimeByKey.entries()].map(([hostKey, runtime]) => ({
       hostKey,
-      online: this.getOnlineHosts().includes(hostKey),
+      online: this.socketsByHost.has(hostKey),
       ...runtime
     }));
     ws.send(JSON.stringify({ type: "host.snapshot", hosts }));
   }
 
+  private queueUiHostBroadcast(hostKey: string): void {
+    if (this.uiBroadcastTimers.has(hostKey)) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      this.uiBroadcastTimers.delete(hostKey);
+      this.broadcastUiHost(hostKey);
+    }, 120);
+    this.uiBroadcastTimers.set(hostKey, timer);
+  }
+
   private broadcastUiHost(hostKey: string): void {
     const runtime = this.hostRuntimeByKey.get(hostKey) ?? { agentName: "unknown" };
-    const payload = {
+    const payload = JSON.stringify({
       type: "host.update",
       host: {
         hostKey,
-        online: this.getOnlineHosts().includes(hostKey),
+        online: this.socketsByHost.has(hostKey),
         ...runtime
       }
-    };
+    });
     for (const client of this.uiWss.clients) {
       if (client.readyState === client.OPEN) {
-        client.send(JSON.stringify(payload));
+        client.send(payload);
       }
     }
   }
@@ -213,7 +225,7 @@ export class AgentHub {
             agentName: register.agentName,
             lastHeartbeatAt: new Date().toISOString()
           });
-          this.broadcastUiHost(resolvedHostKey);
+          this.queueUiHostBroadcast(resolvedHostKey);
           return;
       }
 
@@ -226,7 +238,7 @@ export class AgentHub {
           ...runtime,
           lastHeartbeatAt: message.at
         });
-        this.broadcastUiHost(hostKey);
+        this.queueUiHostBroadcast(hostKey);
         return;
       }
 
@@ -242,7 +254,7 @@ export class AgentHub {
           lastStatusAt: status.at,
           stats: status.stats
         });
-        this.broadcastUiHost(hostKey);
+        this.queueUiHostBroadcast(hostKey);
         return;
       }
 
@@ -318,7 +330,7 @@ export class AgentHub {
     ws.on("close", () => {
       if (hostKey && this.socketsByHost.get(hostKey) === ws) {
         this.socketsByHost.delete(hostKey);
-        this.broadcastUiHost(hostKey);
+        this.queueUiHostBroadcast(hostKey);
       }
     });
   }
@@ -343,7 +355,7 @@ export class AgentHub {
     }
     this.socketsByHost.delete(hostKey);
     this.hostRuntimeByKey.delete(hostKey);
-    this.broadcastUiHost(hostKey);
+    this.queueUiHostBroadcast(hostKey);
   }
 
   public async sendCommand(input: {
@@ -365,6 +377,7 @@ export class AgentHub {
       command: input.command,
       payload: input.payload
     };
+    const serialized = JSON.stringify(message);
 
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -382,7 +395,7 @@ export class AgentHub {
         timeout
       });
 
-      ws.send(JSON.stringify(message), (error) => {
+      ws.send(serialized, (error) => {
         if (error) {
           clearTimeout(timeout);
           this.pending.delete(requestId);

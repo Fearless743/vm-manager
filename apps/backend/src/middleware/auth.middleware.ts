@@ -1,19 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
-import type { Role, UserRecord } from "@vm-manager/shared";
-import { config } from "./config.js";
-import { getStore } from "./store.js";
-
-const tokenPayload = (user: UserRecord) => ({
-  sub: user.id,
-  username: user.username,
-  role: user.role
-});
-
-export const createToken = (user: UserRecord): string => jwt.sign(tokenPayload(user), config.jwtSecret, { expiresIn: "12h" });
-
-export const verifyPassword = async (password: string, hash: string): Promise<boolean> => bcrypt.compare(password, hash);
+import type { Role } from "@vm-manager/shared";
+import { verifyAccessToken } from "../utils/auth.util.js";
 
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   const auth = req.header("authorization");
@@ -23,7 +10,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   }
   const token = auth.slice("Bearer ".length);
   try {
-    const payload = jwt.verify(token, config.jwtSecret) as { sub: string; username: string; role: Role };
+    const payload = verifyAccessToken(token);
     req.auth = {
       id: payload.sub,
       username: payload.username,
@@ -45,9 +32,4 @@ export const requireRole = (roles: Role[]) => (req: Request, res: Response, next
     return;
   }
   next();
-};
-
-export const resolveUserByUsername = async (username: string): Promise<UserRecord | undefined> => {
-  const store = await getStore();
-  return store.users.find((item) => item.username === username);
 };

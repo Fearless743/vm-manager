@@ -11,7 +11,15 @@ export type Session = {
 
 export type VmAction = "start" | "stop" | "reboot" | "reinstall" | "resetPassword" | "delete";
 export type PageKey = "overview" | "hosts" | "vms" | "users" | "settings" | "my-vms";
-export type ModalKind = "createHost" | "createVm" | "createUser" | "editUser" | "showHostSecret" | "showAgentInstallCommand" | null;
+export type ModalKind =
+  | "createHost"
+  | "createVm"
+  | "createUser"
+  | "editUser"
+  | "showHostSecret"
+  | "showAgentInstallCommand"
+  | "changeOwnPassword"
+  | null;
 
 export type SiteConfig = {
   siteTitle: string;

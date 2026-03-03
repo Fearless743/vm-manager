@@ -146,6 +146,9 @@ export function App() {
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(defaultSiteConfig);
   const [siteTitleInput, setSiteTitleInput] = useState(defaultSiteConfig.siteTitle);
   const [loginSubtitleInput, setLoginSubtitleInput] = useState(defaultSiteConfig.loginSubtitle);
+  const [currentPasswordInput, setCurrentPasswordInput] = useState("");
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [confirmPasswordInput, setConfirmPasswordInput] = useState("");
   const [error, setError] = useState("");
   const [modalKind, setModalKind] = useState<ModalKind>(null);
 
@@ -167,7 +170,7 @@ export function App() {
   const page = routePage ?? fallbackPage;
 
   const refreshSiteConfig = async () => {
-    const response = await fetch(`${resolveHttpBase()}/api/site-config`);
+    const response = await fetch(`${resolveHttpBase()}/api/site-configs/current`);
     if (!response.ok) {
       throw new Error(`加载网站配置失败: ${response.status}`);
     }
@@ -193,7 +196,7 @@ export function App() {
     if (!authHeaders) {
       return;
     }
-    const response = await fetch(`${resolveHttpBase()}/api/systems`, { headers: authHeaders });
+    const response = await fetch(`${resolveHttpBase()}/api/system-options`, { headers: authHeaders });
     if (!response.ok) {
       throw new Error(`加载系统选项失败: ${response.status}`);
     }
@@ -331,7 +334,7 @@ export function App() {
 
   const login = async () => {
     setError("");
-    const response = await fetch(`${resolveHttpBase()}/api/auth/login`, {
+    const response = await fetch(`${resolveHttpBase()}/api/sessions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -398,7 +401,7 @@ export function App() {
       return;
     }
     setError("");
-    const response = await fetch(`${resolveHttpBase()}/api/vms/${vmId}/action`, {
+    const response = await fetch(`${resolveHttpBase()}/api/vms/${vmId}/operations`, {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ action })
@@ -421,7 +424,7 @@ export function App() {
       return;
     }
     setError("");
-    const response = await fetch(`${resolveHttpBase()}/api/vms/${vmId}/assign`, {
+    const response = await fetch(`${resolveHttpBase()}/api/vms/${vmId}/owner`, {
       method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ ownerUsername: target })
@@ -463,7 +466,7 @@ export function App() {
     }
     setError("");
     const response = await fetch(`${resolveHttpBase()}/api/hosts/${hostKey}`, {
-      method: "PATCH",
+      method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ enabled })
     });
@@ -480,7 +483,7 @@ export function App() {
       return;
     }
     setError("");
-    const response = await fetch(`${resolveHttpBase()}/api/hosts/${hostKey}/reset-secret`, {
+    const response = await fetch(`${resolveHttpBase()}/api/hosts/${hostKey}/secret-rotations`, {
       method: "POST",
       headers: authHeaders
     });
@@ -511,8 +514,8 @@ export function App() {
       return;
     }
     setError("");
-    const response = await fetch(`${resolveHttpBase()}/api/site-config`, {
-      method: "PATCH",
+    const response = await fetch(`${resolveHttpBase()}/api/site-configs/current`, {
+      method: "POST",
       headers: authHeaders,
       body: JSON.stringify({
         siteTitle: siteTitleInput,
@@ -529,6 +532,38 @@ export function App() {
     setSiteConfig(updated);
     setSiteTitleInput(updated.siteTitle);
     setLoginSubtitleInput(updated.loginSubtitle);
+  };
+
+  const changeOwnPassword = async () => {
+    if (!authHeaders) {
+      return;
+    }
+    if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) {
+      setError("请填写完整的密码信息");
+      return;
+    }
+    if (newPasswordInput !== confirmPasswordInput) {
+      setError("两次输入的新密码不一致");
+      return;
+    }
+    setError("");
+    const response = await fetch(`${resolveHttpBase()}/api/users/me/password`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        currentPassword: currentPasswordInput,
+        newPassword: newPasswordInput
+      })
+    });
+    if (!response.ok) {
+      const body = (await response.json()) as { error?: string };
+      setError(body.error ?? "修改密码失败");
+      return;
+    }
+    setCurrentPasswordInput("");
+    setNewPasswordInput("");
+    setConfirmPasswordInput("");
+    setModalKind(null);
   };
 
   const createUser = async () => {
@@ -565,7 +600,7 @@ export function App() {
     }
     setError("");
     const response = await fetch(`${resolveHttpBase()}/api/users/${userId}`, {
-      method: "PATCH",
+      method: "POST",
       headers: authHeaders,
       body: JSON.stringify({ role, password: password || undefined })
     });
@@ -584,12 +619,12 @@ export function App() {
       return;
     }
     setError("");
-    const response = await fetch(`${resolveHttpBase()}/api/users/${userId}`, {
-      method: "DELETE",
+    const deletionResponse = await fetch(`${resolveHttpBase()}/api/users/${userId}/deletions`, {
+      method: "POST",
       headers: authHeaders
     });
-    if (!response.ok) {
-      const body = (await response.json()) as { error?: string };
+    if (!deletionResponse.ok) {
+      const body = (await deletionResponse.json()) as { error?: string };
       setError(body.error ?? "删除用户失败");
       return;
     }
@@ -921,6 +956,28 @@ export function App() {
       );
     }
 
+    if (modalKind === "changeOwnPassword") {
+      title = "修改密码";
+      confirmText = "保存密码";
+      onConfirm = changeOwnPassword;
+      content = (
+        <div className="modal-form">
+          <label>
+            当前密码
+            <input type="password" value={currentPasswordInput} onChange={(event) => setCurrentPasswordInput(event.target.value)} />
+          </label>
+          <label>
+            新密码
+            <input type="password" value={newPasswordInput} onChange={(event) => setNewPasswordInput(event.target.value)} />
+          </label>
+          <label>
+            确认新密码
+            <input type="password" value={confirmPasswordInput} onChange={(event) => setConfirmPasswordInput(event.target.value)} />
+          </label>
+        </div>
+      );
+    }
+
     return (
       <div className="modal-overlay" onClick={() => setModalKind(null)}>
         <section className="modal card" onClick={(event) => event.stopPropagation()}>
@@ -962,6 +1019,7 @@ export function App() {
             </button>
           ))}
         </div>
+        <button className="btn btn-secondary" onClick={() => setModalKind("changeOwnPassword")}>修改密码</button>
         <button className="btn btn-ghost" onClick={logout}>退出登录</button>
         </aside>
 
