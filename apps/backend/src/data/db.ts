@@ -1,3 +1,4 @@
+import { mkdirSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { sql } from "drizzle-orm";
@@ -11,6 +12,10 @@ const databaseUrl = rawDatabaseFile.startsWith("file:")
   : `file:${isAbsolute(rawDatabaseFile) ? rawDatabaseFile : resolve(process.cwd(), rawDatabaseFile)}`;
 
 const databaseDirectory = rawDatabaseFile.startsWith("file:") ? null : dirname(isAbsolute(rawDatabaseFile) ? rawDatabaseFile : resolve(process.cwd(), rawDatabaseFile));
+
+if (databaseDirectory) {
+  mkdirSync(databaseDirectory, { recursive: true });
+}
 
 export const db = drizzle({
   connection: {
