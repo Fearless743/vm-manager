@@ -10,7 +10,7 @@ type Props = {
 
 export function UserDashboardPage(props: Props): JSX.Element {
   return (
-    <Card title="我的虚拟机">
+    <Card className="dashboard-panel" title="我的虚拟机">
       <VmCardGrid
         vms={props.vms}
         adminMode={false}

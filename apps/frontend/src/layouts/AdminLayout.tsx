@@ -34,14 +34,16 @@ export function AdminLayout(props: Props): JSX.Element {
     <Layout className="admin-layout">
       <Sider className="admin-sider" width={240} breakpoint="lg" collapsedWidth={0}>
         <div className="sider-brand">
-          <Typography.Title level={4} style={{ color: "#f5f8ff", marginBottom: 0 }}>
+          <Typography.Text className="sider-brand-label">Control Surface</Typography.Text>
+          <Typography.Title level={4} className="sider-brand-title">
             {props.siteConfig.sidebarTitle}
           </Typography.Title>
-          <Typography.Text style={{ color: "#9bb3ff" }}>
+          <Typography.Text className="sider-brand-user">
             {props.session.user.username} ({props.session.user.role})
           </Typography.Text>
         </div>
         <Menu
+          className="admin-menu"
           mode="inline"
           theme="dark"
           selectedKeys={[props.selectedPage]}
@@ -52,11 +54,11 @@ export function AdminLayout(props: Props): JSX.Element {
 
       <Layout>
         <Header className="admin-header">
-          <Space>
-            <Button icon={<SafetyCertificateOutlined />} onClick={props.onOpenChangePassword}>
+          <Space className="admin-header-actions">
+            <Button className="header-action-btn" icon={<SafetyCertificateOutlined />} onClick={props.onOpenChangePassword}>
               修改密码
             </Button>
-            <Button icon={<LogoutOutlined />} danger onClick={props.onLogout}>
+            <Button className="header-action-btn header-action-btn-danger" icon={<LogoutOutlined />} danger onClick={props.onLogout}>
               退出登录
             </Button>
           </Space>

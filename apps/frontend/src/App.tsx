@@ -18,8 +18,40 @@ export function App(): JSX.Element {
       <ConfigProvider
         theme={{
           token: {
-            colorPrimary: "#1677ff",
+            colorPrimary: "#1dd6b3",
+            colorSuccess: "#32d296",
+            colorWarning: "#f2b84b",
+            colorError: "#ff6f7d",
+            colorBgBase: "#050b15",
+            colorBgLayout: "#050b15",
+            colorBgContainer: "#0e1a2d",
+            colorBgElevated: "#132237",
+            colorText: "#e8f2ff",
+            colorTextSecondary: "#9cb0cb",
+            colorBorder: "#2a3854",
+            colorSplit: "#1f2b42",
+            boxShadow: "0 18px 40px rgba(4, 9, 18, 0.45)",
+            borderRadius: 12,
+            borderRadiusLG: 16,
             fontFamily: "\"Noto Sans SC\", \"IBM Plex Sans\", sans-serif",
+            fontFamilyCode: "\"IBM Plex Mono\", monospace",
+          },
+          components: {
+            Button: {
+              borderRadius: 10,
+              defaultBg: "#121f34",
+              defaultColor: "#dce7fa",
+              defaultBorderColor: "#2c3b5a",
+              primaryShadow: "0 0 0 1px rgba(29, 214, 179, 0.28), 0 8px 20px rgba(10, 178, 148, 0.28)",
+            },
+            Input: {
+              activeBorderColor: "#1dd6b3",
+              hoverBorderColor: "#22c9aa",
+              activeShadow: "0 0 0 2px rgba(29, 214, 179, 0.18)",
+            },
+            Card: {
+              colorBgContainer: "#101e33",
+            },
           },
         }}
       >
@@ -44,13 +76,72 @@ export function App(): JSX.Element {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: "#1462ff",
-          colorSuccess: "#2e7d32",
-          colorWarning: "#c17800",
-          colorError: "#b42318",
-          borderRadius: 10,
+          colorPrimary: "#1dd6b3",
+          colorSuccess: "#32d296",
+          colorWarning: "#f2b84b",
+          colorError: "#ff6f7d",
+          colorBgBase: "#050b15",
+          colorBgLayout: "#050b15",
+          colorBgContainer: "#0e1a2d",
+          colorBgElevated: "#122038",
+          colorText: "#e8f2ff",
+          colorTextSecondary: "#9cb0cb",
+          colorBorder: "#2a3854",
+          colorSplit: "#1f2b42",
+          boxShadow: "0 18px 40px rgba(4, 9, 18, 0.45)",
+          borderRadius: 12,
+          borderRadiusLG: 16,
           fontFamily: "\"Noto Sans SC\", \"IBM Plex Sans\", sans-serif",
           fontFamilyCode: "\"IBM Plex Mono\", monospace",
+        },
+        components: {
+          Layout: {
+            bodyBg: "#050b15",
+            headerBg: "#091426",
+            siderBg: "#070f1d",
+            triggerBg: "#0f1b2f",
+            triggerColor: "#c2d5ee",
+            headerPadding: "0 16px",
+          },
+          Menu: {
+            darkItemBg: "transparent",
+            darkSubMenuItemBg: "transparent",
+            darkItemColor: "#8ea6c9",
+            darkItemHoverColor: "#d7e6ff",
+            darkItemSelectedColor: "#dcfff7",
+            darkItemSelectedBg: "rgba(29, 214, 179, 0.2)",
+            itemBorderRadius: 10,
+          },
+          Button: {
+            borderRadius: 10,
+            defaultBg: "#121f34",
+            defaultColor: "#dce7fa",
+            defaultBorderColor: "#2c3b5a",
+            primaryShadow: "0 0 0 1px rgba(29, 214, 179, 0.3), 0 8px 20px rgba(10, 178, 148, 0.3)",
+          },
+          Card: {
+            colorBgContainer: "#101e33",
+            headerBg: "rgba(255, 255, 255, 0.02)",
+          },
+          Table: {
+            headerBg: "#0f2036",
+            headerColor: "#dce7fa",
+            rowHoverBg: "rgba(29, 214, 179, 0.08)",
+            borderColor: "#22324c",
+          },
+          Input: {
+            activeBorderColor: "#1dd6b3",
+            hoverBorderColor: "#22c9aa",
+            activeShadow: "0 0 0 2px rgba(29, 214, 179, 0.2)",
+          },
+          Tag: {
+            defaultBg: "#152640",
+            defaultColor: "#d5e5ff",
+          },
+          Alert: {
+            colorErrorBg: "rgba(255, 111, 125, 0.12)",
+            colorErrorBorder: "rgba(255, 111, 125, 0.4)",
+          },
         },
       }}
     >

@@ -130,24 +130,24 @@ export function AdminDashboardPage(props: Props): JSX.Element {
     const unassigned = props.vms.filter((vm) => vm.ownerUsername === "unassigned").length;
     const onlineHosts = props.hosts.filter((host) => host.online).length;
     return (
-      <Row gutter={[16, 16]}>
+      <Row className="overview-row" gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="dashboard-panel overview-stat-card">
             <Statistic title="虚拟机总数" value={props.vms.length} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="dashboard-panel overview-stat-card">
             <Statistic title="未分配虚拟机" value={unassigned} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="dashboard-panel overview-stat-card">
             <Statistic title="宿主机节点" value={props.hosts.length} />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card>
+          <Card className="dashboard-panel overview-stat-card">
             <Statistic title="在线宿主机" value={onlineHosts} />
           </Card>
         </Col>
@@ -158,6 +158,7 @@ export function AdminDashboardPage(props: Props): JSX.Element {
   if (props.page === "hosts") {
     return (
       <Card
+        className="dashboard-panel"
         title="宿主机节点"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={props.onOpenCreateHost}>
@@ -165,7 +166,14 @@ export function AdminDashboardPage(props: Props): JSX.Element {
           </Button>
         }
       >
-        <Table rowKey="hostKey" columns={hostColumns} dataSource={props.hosts} pagination={false} scroll={{ x: 1100 }} />
+        <Table
+          className="dashboard-table"
+          rowKey="hostKey"
+          columns={hostColumns}
+          dataSource={props.hosts}
+          pagination={false}
+          scroll={{ x: 1100 }}
+        />
       </Card>
     );
   }
@@ -173,6 +181,7 @@ export function AdminDashboardPage(props: Props): JSX.Element {
   if (props.page === "users") {
     return (
       <Card
+        className="dashboard-panel"
         title="用户管理"
         extra={
           <Button type="primary" icon={<PlusOutlined />} onClick={props.onOpenCreateUser}>
@@ -180,14 +189,21 @@ export function AdminDashboardPage(props: Props): JSX.Element {
           </Button>
         }
       >
-        <Table rowKey="id" columns={userColumns} dataSource={props.users} pagination={false} scroll={{ x: 900 }} />
+        <Table
+          className="dashboard-table"
+          rowKey="id"
+          columns={userColumns}
+          dataSource={props.users}
+          pagination={false}
+          scroll={{ x: 900 }}
+        />
       </Card>
     );
   }
 
   if (props.page === "settings") {
     return (
-      <Card title="网站配置">
+      <Card className="dashboard-panel" title="网站配置">
         <Form layout="vertical" className="settings-form">
           <Form.Item label="站点标题">
             <Input value={props.siteTitleInput} onChange={(event) => props.onSiteTitleInputChange(event.target.value)} />
@@ -205,6 +221,7 @@ export function AdminDashboardPage(props: Props): JSX.Element {
 
   return (
     <Card
+      className="dashboard-panel"
       title="虚拟机"
       extra={
         <Button type="primary" icon={<PlusOutlined />} onClick={props.onOpenCreateVm}>

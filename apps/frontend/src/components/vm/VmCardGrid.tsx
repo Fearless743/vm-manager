@@ -45,17 +45,17 @@ export function VmCardGrid(props: Props): JSX.Element {
             </Space>
           }
         >
-          <Space direction="vertical" size={2} style={{ width: "100%" }}>
-            <Typography.Text>归属用户: {vm.ownerUsername}</Typography.Text>
-            <Typography.Text>宿主机: {vm.hostKey}</Typography.Text>
-            <Typography.Text>系统: {vm.systemId}</Typography.Text>
-            <Typography.Text>硬盘: {vm.diskSizeGb ? `${vm.diskSizeGb} GB` : "默认"}</Typography.Text>
-            <Typography.Text>CPU 核心: {vm.cpuCores ?? "默认"}</Typography.Text>
-            <Typography.Text>内存: {vm.memoryMb ? `${vm.memoryMb} MB` : "默认"}</Typography.Text>
-            <Typography.Text>带宽: {vm.bandwidthMbps ? `${vm.bandwidthMbps} Mbps` : "默认"}</Typography.Text>
-            <Typography.Text>SSH 端口: {vm.sshPort ?? "-"}</Typography.Text>
-            <Typography.Text>SSH 密码: {vm.sshPassword ?? "-"}</Typography.Text>
-            <Typography.Text>开放端口: {vm.openPorts.length ? vm.openPorts.join(", ") : "-"}</Typography.Text>
+          <Space direction="vertical" size={2} className="vm-meta-list">
+            <Typography.Text className="vm-meta-item">归属用户: {vm.ownerUsername}</Typography.Text>
+            <Typography.Text className="vm-meta-item">宿主机: {vm.hostKey}</Typography.Text>
+            <Typography.Text className="vm-meta-item">系统: {vm.systemId}</Typography.Text>
+            <Typography.Text className="vm-meta-item">硬盘: {vm.diskSizeGb ? `${vm.diskSizeGb} GB` : "默认"}</Typography.Text>
+            <Typography.Text className="vm-meta-item">CPU 核心: {vm.cpuCores ?? "默认"}</Typography.Text>
+            <Typography.Text className="vm-meta-item">内存: {vm.memoryMb ? `${vm.memoryMb} MB` : "默认"}</Typography.Text>
+            <Typography.Text className="vm-meta-item">带宽: {vm.bandwidthMbps ? `${vm.bandwidthMbps} Mbps` : "默认"}</Typography.Text>
+            <Typography.Text className="vm-meta-item">SSH 端口: {vm.sshPort ?? "-"}</Typography.Text>
+            <Typography.Text className="vm-meta-item">SSH 密码: {vm.sshPassword ?? "-"}</Typography.Text>
+            <Typography.Text className="vm-meta-item">开放端口: {vm.openPorts.length ? vm.openPorts.join(", ") : "-"}</Typography.Text>
             {vm.lastError && <Alert type="error" showIcon message={vm.lastError} />}
           </Space>
 
@@ -71,7 +71,7 @@ export function VmCardGrid(props: Props): JSX.Element {
           </Space>
 
           {props.adminMode && (
-            <Space.Compact style={{ width: "100%", marginTop: 10 }}>
+            <Space.Compact className="vm-assign-row">
               <Input
                 placeholder="分配给用户名"
                 value={props.assignTargets[vm.id] ?? (vm.ownerUsername === "unassigned" ? "" : vm.ownerUsername)}
